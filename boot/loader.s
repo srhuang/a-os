@@ -70,15 +70,15 @@ loader_start:
 ;-------------------------
 ; print log
 ;-------------------------
-    mov bp, message ; absolute address of string
-    mov ah, 0x13    ; Function code
-    mov al, 0x01    ; Write mode
-    mov bh, 0x0     ; Page Number
-    mov bl, 0x5     ; font color
-    mov cx, 0x8     ; length of string
-    add dh, 1       ; input: dh=row, dl=column
-    mov dl, 0       ; print to next line
-    int 0x10        ; BIOS interrupt call
+    mov bp, message_1       ; absolute address of string
+    mov ah, 0x13            ; Function code
+    mov al, 0x01            ; Write mode
+    mov bh, 0x0             ; Page Number
+    mov bl, 0x5             ; font color
+    mov cx, message_1_len   ; length of string
+    add dh, 1               ; input: dh=row, dl=column
+    mov dl, 0               ; print to next line
+    int 0x10                ; BIOS interrupt call
 
 ;-------------------------
 ; enable protected mode
@@ -112,6 +112,76 @@ p_mode_start:
    mov esp,LOADER_STACK_TOP
 
 ;-------------------------
+; get current cursor
+;-------------------------
+; bx=current cursor
+; get high bits of cursor
+    mov dx, 0x03d4
+    mov al, 0x0e
+    out dx, al
+    mov dx, 0x03d5
+    in al, dx
+    mov bh, al
+
+; get low bits of cursor
+    mov dx, 0x03d4
+    mov al, 0x0f
+    out dx, al
+    mov dx, 0x03d5
+    in al, dx
+    mov bl, al
+
+;-------------------------
+; set bx to next line
+;-------------------------
+; dividend: dx:ax, quotient: ax, remainder: dx
+    xor dx, dx      ; clear to zero
+    mov ax, bx
+    mov si, 80
+    div si
+    sub bx, dx      ; minus remainder
+    add bx, 80      ; next line
+
+;-------------------------
+; print log
+;-------------------------
+    mov ax, SELECTOR_VIDEO
+    mov gs, ax
+    shl bx, 1               ; 1 char = 2 bytes
+    mov edx, message_2
+    mov ecx, message_2_len  ; loop count
+    xor esi, esi            ; clear to zero
+    xor edi, edi            ; clear to zero
+putchar:
+    mov byte al, [edx+edi]
+    mov byte [gs:bx+si], al
+    mov byte [gs:bx+si+1], 0x4e
+    add di, 1
+    add si, 2
+    loop putchar
+
+;-------------------------
+; set cursor to next line
+;-------------------------
+    shr bx, 1       ; 2 bytes = 1 char
+    add bx, 80      ; next line
+; set high bits of cursor
+    mov dx, 0x03d4
+    mov al, 0x0e
+    out dx, al
+    mov dx, 0x03d5
+    mov al, bh
+    out dx, al
+
+; set low bits of cursor
+    mov dx, 0x03d4
+    mov al, 0x0f
+    out dx, al
+    mov dx, 0x03d5
+    mov al, bl
+    out dx, al
+
+;-------------------------
 ; pause the process
 ;-------------------------
     jmp $           ; stop here!!!
@@ -119,7 +189,10 @@ p_mode_start:
 ;-------------------------
 ; non-fix data location
 ;-------------------------
-    message db "2 Loader"
+    message_1       db "2 Loader"
+    message_1_len   equ 8
+    message_2       db "3 Protected"
+    message_2_len   equ 11
     gdtr    dw GDT_LIMIT    ; [15:0] gdt limit
             dd gdt_base     ; [47:16] gdt base
 
