@@ -38,7 +38,9 @@ times 256-($-$$) db 0    ; total 32 GDT element
 ;-------------------------
 ; fix data location
 ;-------------------------
-
+ram_size    dd 0            ; LOADER_BASE_ADDR + 0x100 = 0x900
+ards_nr     dd 0            ; number of ards
+ards_buf times 200 db 0     ; total 10 ards
 
 ;-------------------------
 ; GDT selector
@@ -46,12 +48,6 @@ times 256-($-$$) db 0    ; total 32 GDT element
 SELECTOR_CODE   equ (code_desc - gdt_base) + TI_GDT + RPL_0
 SELECTOR_DATA   equ (data_desc - gdt_base) + TI_GDT + RPL_0
 SELECTOR_VIDEO  equ (video_desc - gdt_base) + TI_GDT + RPL_0
-
-;-------------------------
-; RAM detection
-;-------------------------
-
-
 
 times 512-($-$$) db 0
 loader_start:
@@ -79,6 +75,40 @@ loader_start:
     add dh, 1               ; input: dh=row, dl=column
     mov dl, 0               ; print to next line
     int 0x10                ; BIOS interrupt call
+
+;-------------------------
+; get RAM size
+;-------------------------
+; get all ARDS
+get_ram_size:
+    xor ebx, ebx            ; for BIOS, must be zero
+    mov edx, 0x534d4150     ; Place "SMAP" into edx
+    mov di, ards_buf
+e820:
+    mov eax, 0x0000e820     ; it changes after trigger interrupt
+    mov ecx, 20             ; size of ARDS
+    int 0x15
+    add di, cx              ; point to next buffer
+    inc word [ards_nr]      ; increase the number of ARDS
+    cmp ebx, 0x0
+    jne e820
+
+; find the max address
+    mov ebx, ards_buf       ; base address of ARDS
+    xor edx, edx            ; for max address
+    mov cx, [ards_nr]       ; loop count
+find_max_addr_loop:
+    mov eax, [ebx]          ; base address low bits
+    add eax, [ebx+8]        ; length low bits
+    cmp edx, eax            ; compare with max address
+    jge next_ards
+    mov edx, eax            ; update the max address
+next_ards:
+    add ebx, 20             ; next ARDS structure
+    loop find_max_addr_loop
+
+; set RAM size
+    mov [ram_size], edx     ; store the RAM size
 
 ;-------------------------
 ; enable protected mode
@@ -152,13 +182,13 @@ p_mode_start:
     mov ecx, message_2_len  ; loop count
     xor esi, esi            ; clear to zero
     xor edi, edi            ; clear to zero
-putchar:
+putchar_loop:
     mov byte al, [edx+edi]
     mov byte [gs:bx+si], al
     mov byte [gs:bx+si+1], 0x4e
     add di, 1
     add si, 2
-    loop putchar
+    loop putchar_loop
 
 ;-------------------------
 ; set cursor to next line
