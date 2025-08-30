@@ -142,74 +142,11 @@ p_mode_start:
    mov esp,LOADER_STACK_TOP
 
 ;-------------------------
-; get current cursor
-;-------------------------
-; bx=current cursor
-; get high bits of cursor
-    mov dx, 0x03d4
-    mov al, 0x0e
-    out dx, al
-    mov dx, 0x03d5
-    in al, dx
-    mov bh, al
-
-; get low bits of cursor
-    mov dx, 0x03d4
-    mov al, 0x0f
-    out dx, al
-    mov dx, 0x03d5
-    in al, dx
-    mov bl, al
-
-;-------------------------
-; set bx to next line
-;-------------------------
-; dividend: dx:ax, quotient: ax, remainder: dx
-    xor dx, dx      ; clear to zero
-    mov ax, bx
-    mov si, 80
-    div si
-    sub bx, dx      ; minus remainder
-    add bx, 80      ; next line
-
-;-------------------------
 ; print log
 ;-------------------------
-    mov ax, SELECTOR_VIDEO
-    mov gs, ax
-    shl bx, 1               ; 1 char = 2 bytes
-    mov edx, message_2
-    mov ecx, message_2_len  ; loop count
-    xor esi, esi            ; clear to zero
-    xor edi, edi            ; clear to zero
-putchar_loop:
-    mov byte al, [edx+edi]
-    mov byte [gs:bx+si], al
-    mov byte [gs:bx+si+1], 0x4e
-    add di, 1
-    add si, 2
-    loop putchar_loop
-
-;-------------------------
-; set cursor to next line
-;-------------------------
-    shr bx, 1       ; 2 bytes = 1 char
-    add bx, 80      ; next line
-; set high bits of cursor
-    mov dx, 0x03d4
-    mov al, 0x0e
-    out dx, al
-    mov dx, 0x03d5
-    mov al, bh
-    out dx, al
-
-; set low bits of cursor
-    mov dx, 0x03d4
-    mov al, 0x0f
-    out dx, al
-    mov dx, 0x03d5
-    mov al, bl
-    out dx, al
+    mov edi, message_2
+    mov ecx, message_2_len
+    call print_log
 
 ;-------------------------
 ; enable memory paging
@@ -229,6 +166,71 @@ putchar_loop:
 ; pause the process
 ;-------------------------
     jmp $           ; stop here!!!
+
+;-------------------------
+; print log
+;   edi : address of message
+;   ecx : length of message
+;-------------------------
+print_log:
+; get current cursor, bx=current cursor
+; get high bits of cursor
+    mov dx, 0x03d4
+    mov al, 0x0e
+    out dx, al
+    mov dx, 0x03d5
+    in al, dx
+    mov bh, al
+
+; get low bits of cursor
+    mov dx, 0x03d4
+    mov al, 0x0f
+    out dx, al
+    mov dx, 0x03d5
+    in al, dx
+    mov bl, al
+
+; set bx to next line
+; dividend: dx:ax, quotient: ax, remainder: dx
+    xor dx, dx      ; clear to zero
+    mov ax, bx
+    mov si, 80
+    div si
+    sub bx, dx      ; minus remainder
+    add bx, 80      ; next line
+
+; print log
+    mov ax, SELECTOR_VIDEO
+    mov gs, ax
+    shl bx, 1               ; 1 char = 2 bytes
+    xor edx, edx            ; clear to zero
+putchar_loop:
+    mov byte al, [edi+edx]
+    mov byte [gs:bx], al
+    mov byte [gs:bx+1], 0x4e
+    add dx, 1
+    add bx, 2
+    loop putchar_loop
+
+; set cursor
+    shr bx, 1               ; 2 bytes = 1 char
+; set high bits of cursor
+    mov dx, 0x03d4
+    mov al, 0x0e
+    out dx, al
+    mov dx, 0x03d5
+    mov al, bh
+    out dx, al
+
+; set low bits of cursor
+    mov dx, 0x03d4
+    mov al, 0x0f
+    out dx, al
+    mov dx, 0x03d5
+    mov al, bl
+    out dx, al
+
+    ret
 
 ;-------------------------
 ; setup memory paging
