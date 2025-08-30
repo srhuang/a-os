@@ -212,9 +212,75 @@ putchar_loop:
     out dx, al
 
 ;-------------------------
+; enable memory paging
+;-------------------------
+    call setup_page
+
+; set page directory address
+    mov eax, PAGE_DIR_ADDR
+    mov cr3, eax
+
+; enable memory paging
+    mov eax, cr0
+    or eax, 0x8000_0000     ; [31:31] for enabling memory paging
+    mov cr0, eax
+
+;-------------------------
 ; pause the process
 ;-------------------------
     jmp $           ; stop here!!!
+
+;-------------------------
+; setup memory paging
+;-------------------------
+setup_page:
+; clear page directory
+    mov eax, 0x0
+    mov ebx, PAGE_DIR_ADDR
+    mov esi, 0                          ; index of entry
+    mov ecx, 1024                       ; loop count
+clear_page_dir_loop:
+    mov [ebx + esi * 4], eax
+    inc esi
+    loop clear_page_dir_loop
+
+; create page directory entry(PDE)
+    mov eax, PAGE_TABLE_ADDR            ; page table 0
+    or eax, PG_US_S | PG_RW_W | PG_P    ; only supervisor
+    mov esi, 0                          ; index of entry
+    mov [ebx + esi * 4], eax            ; for 1 MB kernel
+    mov esi, 768                        ; index of entry
+    mov [ebx + esi * 4], eax            ; mapping the same 1 MB kernel
+
+; reserve the kernel space, page table 769 - 1022
+    add eax, 0x1000
+    mov esi, 769                        ; index of entry
+    mov ecx, 254                        ; loop count
+create_pde_loop:
+    mov [ebx + esi * 4], eax
+    inc esi
+    add eax, 0x1000
+    loop create_pde_loop
+
+; last entry of PDE always point to itself
+    mov eax, PAGE_DIR_ADDR
+    or eax, PG_US_S | PG_RW_W | PG_P    ; only supervisor
+    mov esi, 1023                       ; index of entry
+    mov [ebx + esi * 4], eax            ; point to itself
+
+; create page table entry (PTE) for page table 0
+    mov eax, 0x0                        ; for physical address
+    or eax, PG_US_S | PG_RW_W | PG_P
+    mov ebx, PAGE_TABLE_ADDR
+    mov esi, 0                          ; index of page table
+    mov ecx, 256                        ; 4K * 256 = 1 MB
+create_pte_loop:
+    mov [ebx + esi * 4], eax
+    add eax, 0x1000
+    inc esi
+    loop create_pte_loop
+
+    ret
 
 ;-------------------------
 ; non-fix data location

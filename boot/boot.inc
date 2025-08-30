@@ -53,4 +53,24 @@ RPL_1   equ (0x1)
 RPL_2   equ (0x2)
 RPL_3   equ (0x3)
 
+;------------------------
+; Memory paging
+;-------------------------
+PAGE_DIR_ADDR   equ 0x0010_0000
+PAGE_TABLE_ADDR equ 0x0010_1000
 
+;------------------------
+; Memory paging attribute
+;------------------------
+PG_P        equ (0x1 << 0)
+PG_RW_R     equ (0x0 << 1)
+PG_RW_W     equ (0x1 << 1)
+PG_US_S     equ (0x0 << 2)
+PG_US_U     equ (0x1 << 2)
+PG_PWT      equ (0x1 << 3)
+PG_PCD      equ (0x1 << 4)
+PG_A        equ (0x1 << 5)
+PG_D        equ (0x1 << 6)
+PG_PAT      equ (0x1 << 7)
+PG_G        equ (0x1 << 8)
+PG_AVL      equ (0x7 << 9)
