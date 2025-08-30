@@ -8,6 +8,14 @@ LOADER_STACK_TOP        equ LOADER_BASE_ADDR
 LOADER_START_ADDR       equ LOADER_BASE_ADDR + 0x200 ; 512 Byte data
 
 ;-------------------------
+; Kernel
+;-------------------------
+KERNEL_START_SECTOR     equ 5
+KERNEL_SECTOR_COUNT     equ 200
+KERNEL_BASE_ADDR        equ 0x0007_0000
+KERNEL_STACK_TOP        equ 0x0009_F000
+
+;-------------------------
 ; GDT
 ;-------------------------
 ;   %1 : base address
