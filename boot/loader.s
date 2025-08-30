@@ -163,6 +163,23 @@ p_mode_start:
     mov cr0, eax
 
 ;-------------------------
+; update GDT for video
+;-------------------------
+    sgdt [gdtr]             ; store to RAM
+    mov eax, 0xc000_0000
+    mov ebx, video_desc
+    or [ebx + 4], eax
+    or [gdtr + 2], eax      ; update the gdt_base
+    lgdt [gdtr]             ; load to register
+
+;-------------------------
+; print log
+;-------------------------
+    mov edi, message_3
+    mov ecx, message_3_len
+    call print_log
+
+;-------------------------
 ; pause the process
 ;-------------------------
     jmp $           ; stop here!!!
@@ -291,6 +308,8 @@ create_pte_loop:
     message_1_len   equ 8
     message_2       db "3 Protected"
     message_2_len   equ 11
+    message_3       db "4 Paging"
+    message_3_len   equ 8
     gdtr    dw GDT_LIMIT    ; [15:0] gdt limit
             dd gdt_base     ; [47:16] gdt base
 
