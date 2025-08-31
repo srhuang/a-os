@@ -14,6 +14,7 @@ KERNEL_START_SECTOR     equ 5
 KERNEL_SECTOR_COUNT     equ 200
 KERNEL_BASE_ADDR        equ 0x0007_0000
 KERNEL_STACK_TOP        equ 0x0009_F000
+KERNEL_START_ADDR       equ 0xc000_1000
 
 ;-------------------------
 ; GDT
@@ -82,3 +83,41 @@ PG_D        equ (0x1 << 6)
 PG_PAT      equ (0x1 << 7)
 PG_G        equ (0x1 << 8)
 PG_AVL      equ (0x7 << 9)
+
+;------------------------
+; ELF header
+;------------------------
+E_IDENT     equ 0
+E_TYPE      equ 16
+E_MACHINE   equ 18
+E_VERSION   equ 20
+E_ENTRY     equ 24
+E_PHOFF     equ 28
+E_SHOFF     equ 32
+E_FLAGS     equ 36
+E_EHSIZE    equ 40
+E_PHENTSIZE equ 42
+E_PHNUM     equ 44
+E_SHENTSIZE equ 46
+E_SHNUM     equ 48
+E_SHSTRNDX  equ 50
+E_END       equ 52
+
+;------------------------
+; Program header
+;------------------------
+P_TYPE      equ 0
+P_OFFSET    equ 4
+P_VADDR     equ 8
+P_PADDR     equ 12
+P_FILESZ    equ 16
+P_MEMSZ     equ 20
+P_FLAGS     equ 24
+P_ALIGN     equ 28
+P_END       equ 32
+
+;------------------------
+; Program header type
+;------------------------
+PT_LOAD     equ 1
+

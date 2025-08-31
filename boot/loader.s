@@ -188,9 +188,27 @@ p_mode_start:
     call read_hd_32
 
 ;-------------------------
+; parsing kernel ELF
+;-------------------------
+    call kernel_decode_elf
+    mov esp, KERNEL_STACK_TOP
+
+;-------------------------
+; print log
+;-------------------------
+    mov edi, message_4
+    mov ecx, message_4_len
+    call print_log
+
+;-------------------------
+; jump to kernel
+;-------------------------
+    jmp KERNEL_START_ADDR
+
+;-------------------------
 ; pause the process
 ;-------------------------
-    jmp $           ; stop here!!!
+    jmp $           ; only for debugging
 
 ;-------------------------
 ; print log
@@ -376,6 +394,65 @@ read_hd_32:
     ret
 
 ;-------------------------
+; kernel decode ELF
+;-------------------------
+kernel_decode_elf:
+    xor eax, eax
+    xor ebx, ebx                ; current program header
+    xor ecx, ecx                ; number of program header
+    xor edx, edx                ; size of program header
+
+; load each program header
+    mov ebx, KERNEL_BASE_ADDR
+    mov eax, KERNEL_BASE_ADDR + E_PHOFF
+    add ebx, [eax]              ; start of program header
+    mov eax, KERNEL_BASE_ADDR + E_PHNUM
+    mov cx, [eax]               ; number of program header
+    mov eax, KERNEL_BASE_ADDR + E_PHENTSIZE
+    mov dx, [eax]               ; size of program header
+each_program_header_loop:
+    mov eax, ebx + P_TYPE       ; type of program header
+    cmp byte [eax], PT_LOAD     ; only load PT_LOAD
+    jne next_program_header
+
+    ; memory copy
+    push dword [ebx + P_FILESZ] ; size
+    mov eax, [ebx + P_OFFSET]
+    add eax, KERNEL_BASE_ADDR
+    push eax                    ; source
+    push dword [ebx + P_VADDR]  ; destination
+    call mem_cpy
+    add esp, 12                 ; clear argument in stack
+
+next_program_header:
+    add ebx, edx
+    loop each_program_header_loop
+
+    ret
+
+;-------------------------
+; memory copy(dstr, src, size)
+;   push size   : size of data
+;   push src    : address of source
+;   push dst    : address of destination
+;-------------------------
+mem_cpy:
+    ; backup
+    push ecx
+
+    ; copy by byte
+    mov edi, [esp + 8]
+    mov esi, [esp + 12]
+    mov ecx, [esp + 16]
+    cld         ; set increment for movsb
+    rep movsb
+
+    ; restore
+    pop ecx
+
+    ret
+
+;-------------------------
 ; non-fix data location
 ;-------------------------
     message_1       db "2 Loader"
@@ -384,6 +461,8 @@ read_hd_32:
     message_2_len   equ 11
     message_3       db "4 Paging"
     message_3_len   equ 8
+    message_4       db "5 Kernel"
+    message_4_len   equ 8
     gdtr    dw GDT_LIMIT    ; [15:0] gdt limit
             dd gdt_base     ; [47:16] gdt base
 
