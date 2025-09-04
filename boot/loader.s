@@ -67,7 +67,7 @@ c_code_desc:DESCRIPTOR  0x0,        C_CODE_LEN-1,   GDT_G_1 \
                                                     + GDT_L_32 \
                                                     + GDT_AVL_0 \
                                                     + GDT_P_1 \
-                                                    + GDT_DPL_3 \
+                                                    + GDT_DPL_0 \
                                                     + GDT_S_SW \
                                                     + GDT_TYPE_CODE
 c_data_desc:DESCRIPTOR  0x0,        C_DATA_LEN-1,   GDT_G_1 \
@@ -75,7 +75,7 @@ c_data_desc:DESCRIPTOR  0x0,        C_DATA_LEN-1,   GDT_G_1 \
                                                     + GDT_L_32 \
                                                     + GDT_AVL_0 \
                                                     + GDT_P_1 \
-                                                    + GDT_DPL_3 \
+                                                    + GDT_DPL_0 \
                                                     + GDT_S_SW \
                                                     + GDT_TYPE_DATA
 c_stack_desc:DESCRIPTOR 0x0,        C_STACK_LEN-1,  GDT_G_1 \
@@ -83,9 +83,17 @@ c_stack_desc:DESCRIPTOR 0x0,        C_STACK_LEN-1,  GDT_G_1 \
                                                     + GDT_L_32 \
                                                     + GDT_AVL_0 \
                                                     + GDT_P_1 \
-                                                    + GDT_DPL_3 \
+                                                    + GDT_DPL_0 \
                                                     + GDT_S_SW \
                                                     + GDT_TYPE_DATA
+tss_desc:DESCRIPTOR     0x0,        TSS_LEN-1,      GDT_G_1 \
+                                                    + GDT_D_16 \
+                                                    + GDT_L_32 \
+                                                    + GDT_AVL_0 \
+                                                    + GDT_P_1 \
+                                                    + GDT_DPL_0 \
+                                                    + GDT_S_HW \
+                                                    + GDT_TYPE_TSS
 
 ; call gate             selector,offset,parameter,attrbute
 c_call_gate:CALL_GATE   SELECTOR_C_CODE, 0x0, 0x0, GDT_P_1 + GDT_DPL_3
@@ -105,10 +113,11 @@ SELECTOR_A_STACK    equ (a_stack_desc - gdt_base) + TI_GDT + RPL_0
 SELECTOR_B_CODE     equ (b_code_desc - gdt_base) + TI_GDT + RPL_3
 SELECTOR_B_DATA     equ (b_data_desc - gdt_base) + TI_GDT + RPL_3
 SELECTOR_B_STACK    equ (b_stack_desc - gdt_base) + TI_GDT + RPL_3
-SELECTOR_C_CODE     equ (c_code_desc - gdt_base) + TI_GDT + RPL_3
-SELECTOR_C_DATA     equ (c_data_desc - gdt_base) + TI_GDT + RPL_3
-SELECTOR_C_STACK    equ (c_stack_desc - gdt_base) + TI_GDT + RPL_3
+SELECTOR_C_CODE     equ (c_code_desc - gdt_base) + TI_GDT + RPL_0
+SELECTOR_C_DATA     equ (c_data_desc - gdt_base) + TI_GDT + RPL_0
+SELECTOR_C_STACK    equ (c_stack_desc - gdt_base) + TI_GDT + RPL_0
 SELECTOR_C_GATE     equ (c_call_gate - gdt_base) + TI_GDT + RPL_3
+SELECTOR_TSS        equ (tss_desc - gdt_base) + TI_GDT + RPL_0
 
 ;-------------------------
 ; data
@@ -155,6 +164,7 @@ loader_start:
     DESCRIPTOR_SET_BASE c_code_desc,    cs,     label_c_code
     DESCRIPTOR_SET_BASE c_data_desc,    ds,     label_c_data
     DESCRIPTOR_SET_BASE c_stack_desc,   ss,     label_c_stack
+    DESCRIPTOR_SET_BASE tss_desc,       cs,     label_tss
 
 ;-------------------------
 ; enable protected mode
@@ -188,6 +198,7 @@ A_DATA_LEN  equ $ - label_a_data
 label_a_stack:
     times 256 db 0
 A_STACK_LEN equ $ - label_a_stack
+A_STACK_TOP equ A_STACK_LEN
 
 ;-------------------------
 ; A code
@@ -203,8 +214,11 @@ label_a_code:
     mov byte [gs:edi], bl
     mov byte [gs:edi+1], 0x4e
 
+    mov ax, SELECTOR_TSS
+    ltr ax                  ; must execute in CPL=0
+
     push SELECTOR_B_STACK   ; stack segment
-    push B_STACK_LEN        ; top of stack
+    push B_STACK_TOP        ; top of stack
     push SELECTOR_B_CODE    ; code segment
     push 0                  ; EIP
     retf
@@ -223,6 +237,7 @@ B_DATA_LEN  equ $ - label_b_data
 label_b_stack:
     times 256 db 0
 B_STACK_LEN equ $ - label_b_stack
+B_STACK_TOP equ B_STACK_LEN
 
 ;-------------------------
 ; B code
@@ -237,6 +252,10 @@ label_b_code:
     mov bl, [ds:0]
     mov byte [gs:edi], bl
     mov byte [gs:edi+1], 0x4e
+
+    push 0x1
+    push 0x2
+    push 0x3
 
     call SELECTOR_C_GATE:0
     jmp $           ; stop here!!!
@@ -255,6 +274,7 @@ C_DATA_LEN  equ $ - label_c_data
 label_c_stack:
     times 256 db 0
 C_STACK_LEN equ $ - label_c_stack
+C_STACK_TOP equ C_STACK_LEN
 
 ;-------------------------
 ; C code
@@ -273,3 +293,35 @@ label_c_code:
     retf
 C_CODE_LEN  equ $ - label_c_code
 
+;-------------------------
+; TSS
+;-------------------------
+label_tss:
+    tss_backlink    dd 0x0
+    tss_esp0        dd C_STACK_TOP
+    tss_ss0         dd SELECTOR_C_STACK
+    tss_esp1        dd 0x0
+    tss_ss1         dd 0x0
+    tss_esp2        dd 0x0
+    tss_ss2         dd 0x0
+    tss_cr3         dd 0x0
+    tss_eip         dd 0x0
+    tss_eflags      dd 0x0
+    tss_eax         dd 0x0
+    tss_ecx         dd 0x0
+    tss_edx         dd 0x0
+    tss_ebx         dd 0x0
+    tss_esp         dd 0x0
+    tss_ebp         dd 0x0
+    tss_esi         dd 0x0
+    tss_edi         dd 0x0
+    tss_es          dd 0x0
+    tss_cs          dd 0x0
+    tss_ss          dd 0x0
+    tss_ds          dd 0x0
+    tss_fs          dd 0x0
+    tss_gs          dd 0x0
+    tss_ldt         dd 0x0
+    tss_trace       dw 0x0
+    tss_iobase      dw ($ - label_tss +2)
+TSS_LEN     equ $ - label_tss
