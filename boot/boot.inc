@@ -68,6 +68,7 @@ GDT_S_HW        equ (0x0 << 12)
 GDT_S_SW        equ (0x1 << 12)
 GDT_TYPE_CODE   equ (0x8 << 8)
 GDT_TYPE_DATA   equ (0x2 << 8)
+GDT_TYPE_TSS    equ (0x9 << 8)
 
 ;-------------------------
 ; GDT Selector Attribute
