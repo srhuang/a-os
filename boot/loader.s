@@ -5,8 +5,8 @@ section loader vstart=LOADER_BASE_ADDR
 ; GDT
 ;-------------------------
 ;                       base,       limit,          attribute
-gdt_base:   DESCRIPTOR  0x0,        0x0,            0x0
-video_desc: DESCRIPTOR  0xb_8000,   0x0_7fff,       GDT_G_1 \
+gdt_base:DESCRIPTOR     0x0,        0x0,            0x0
+video_desc:DESCRIPTOR   0xb_8000,   0x0_7fff,       GDT_G_1 \
                                                     + GDT_D_32 \
                                                     + GDT_L_32 \
                                                     + GDT_AVL_0 \
@@ -14,7 +14,7 @@ video_desc: DESCRIPTOR  0xb_8000,   0x0_7fff,       GDT_G_1 \
                                                     + GDT_DPL_3 \
                                                     + GDT_S_SW \
                                                     + GDT_TYPE_DATA
-a_code_desc:  DESCRIPTOR  0x0,      A_CODE_LEN-1,   GDT_G_1 \
+a_code_desc:DESCRIPTOR  0x0,        A_CODE_LEN-1,   GDT_G_1 \
                                                     + GDT_D_32 \
                                                     + GDT_L_32 \
                                                     + GDT_AVL_0 \
@@ -22,7 +22,7 @@ a_code_desc:  DESCRIPTOR  0x0,      A_CODE_LEN-1,   GDT_G_1 \
                                                     + GDT_DPL_0 \
                                                     + GDT_S_SW \
                                                     + GDT_TYPE_CODE
-a_data_desc:  DESCRIPTOR  0x0,      A_DATA_LEN-1,   GDT_G_1 \
+a_data_desc:DESCRIPTOR  0x0,        A_DATA_LEN-1,   GDT_G_1 \
                                                     + GDT_D_32 \
                                                     + GDT_L_32 \
                                                     + GDT_AVL_0 \
@@ -30,7 +30,7 @@ a_data_desc:  DESCRIPTOR  0x0,      A_DATA_LEN-1,   GDT_G_1 \
                                                     + GDT_DPL_0 \
                                                     + GDT_S_SW \
                                                     + GDT_TYPE_DATA
-a_stack_desc:  DESCRIPTOR  0x0,     A_STACK_LEN-1,  GDT_G_1 \
+a_stack_desc:DESCRIPTOR 0x0,        A_STACK_LEN-1,  GDT_G_1 \
                                                     + GDT_D_32 \
                                                     + GDT_L_32 \
                                                     + GDT_AVL_0 \
@@ -38,7 +38,7 @@ a_stack_desc:  DESCRIPTOR  0x0,     A_STACK_LEN-1,  GDT_G_1 \
                                                     + GDT_DPL_0 \
                                                     + GDT_S_SW \
                                                     + GDT_TYPE_DATA
-b_code_desc: DESCRIPTOR  0x0,       B_CODE_LEN-1,   GDT_G_1 \
+b_code_desc:DESCRIPTOR  0x0,        B_CODE_LEN-1,   GDT_G_1 \
                                                     + GDT_D_32 \
                                                     + GDT_L_32 \
                                                     + GDT_AVL_0 \
@@ -46,7 +46,7 @@ b_code_desc: DESCRIPTOR  0x0,       B_CODE_LEN-1,   GDT_G_1 \
                                                     + GDT_DPL_3 \
                                                     + GDT_S_SW \
                                                     + GDT_TYPE_CODE
-b_data_desc: DESCRIPTOR  0x0,       B_DATA_LEN-1,   GDT_G_1 \
+b_data_desc:DESCRIPTOR  0x0,        B_DATA_LEN-1,   GDT_G_1 \
                                                     + GDT_D_32 \
                                                     + GDT_L_32 \
                                                     + GDT_AVL_0 \
@@ -54,7 +54,7 @@ b_data_desc: DESCRIPTOR  0x0,       B_DATA_LEN-1,   GDT_G_1 \
                                                     + GDT_DPL_3 \
                                                     + GDT_S_SW \
                                                     + GDT_TYPE_DATA
-b_stack_desc:  DESCRIPTOR  0x0,     B_STACK_LEN-1,  GDT_G_1 \
+b_stack_desc:DESCRIPTOR 0x0,        B_STACK_LEN-1,  GDT_G_1 \
                                                     + GDT_D_32 \
                                                     + GDT_L_32 \
                                                     + GDT_AVL_0 \
@@ -62,6 +62,34 @@ b_stack_desc:  DESCRIPTOR  0x0,     B_STACK_LEN-1,  GDT_G_1 \
                                                     + GDT_DPL_3 \
                                                     + GDT_S_SW \
                                                     + GDT_TYPE_DATA
+c_code_desc:DESCRIPTOR  0x0,        C_CODE_LEN-1,   GDT_G_1 \
+                                                    + GDT_D_32 \
+                                                    + GDT_L_32 \
+                                                    + GDT_AVL_0 \
+                                                    + GDT_P_1 \
+                                                    + GDT_DPL_3 \
+                                                    + GDT_S_SW \
+                                                    + GDT_TYPE_CODE
+c_data_desc:DESCRIPTOR  0x0,        C_DATA_LEN-1,   GDT_G_1 \
+                                                    + GDT_D_32 \
+                                                    + GDT_L_32 \
+                                                    + GDT_AVL_0 \
+                                                    + GDT_P_1 \
+                                                    + GDT_DPL_3 \
+                                                    + GDT_S_SW \
+                                                    + GDT_TYPE_DATA
+c_stack_desc:DESCRIPTOR 0x0,        C_STACK_LEN-1,  GDT_G_1 \
+                                                    + GDT_D_32 \
+                                                    + GDT_L_32 \
+                                                    + GDT_AVL_0 \
+                                                    + GDT_P_1 \
+                                                    + GDT_DPL_3 \
+                                                    + GDT_S_SW \
+                                                    + GDT_TYPE_DATA
+
+; call gate             selector,offset,parameter,attrbute
+c_call_gate:CALL_GATE   SELECTOR_C_CODE, 0x0, 0x0, GDT_P_1 + GDT_DPL_3
+
 GDT_SIZE    equ $ - gdt_base
 GDT_LIMIT   equ GDT_SIZE - 1
 
@@ -77,6 +105,10 @@ SELECTOR_A_STACK    equ (a_stack_desc - gdt_base) + TI_GDT + RPL_0
 SELECTOR_B_CODE     equ (b_code_desc - gdt_base) + TI_GDT + RPL_3
 SELECTOR_B_DATA     equ (b_data_desc - gdt_base) + TI_GDT + RPL_3
 SELECTOR_B_STACK    equ (b_stack_desc - gdt_base) + TI_GDT + RPL_3
+SELECTOR_C_CODE     equ (c_code_desc - gdt_base) + TI_GDT + RPL_3
+SELECTOR_C_DATA     equ (c_data_desc - gdt_base) + TI_GDT + RPL_3
+SELECTOR_C_STACK    equ (c_stack_desc - gdt_base) + TI_GDT + RPL_3
+SELECTOR_C_GATE     equ (c_call_gate - gdt_base) + TI_GDT + RPL_3
 
 ;-------------------------
 ; data
@@ -120,6 +152,9 @@ loader_start:
     DESCRIPTOR_SET_BASE b_code_desc,    cs,     label_b_code
     DESCRIPTOR_SET_BASE b_data_desc,    ds,     label_b_data
     DESCRIPTOR_SET_BASE b_stack_desc,   ss,     label_b_stack
+    DESCRIPTOR_SET_BASE c_code_desc,    cs,     label_c_code
+    DESCRIPTOR_SET_BASE c_data_desc,    ds,     label_c_data
+    DESCRIPTOR_SET_BASE c_stack_desc,   ss,     label_c_stack
 
 ;-------------------------
 ; enable protected mode
@@ -203,6 +238,38 @@ label_b_code:
     mov byte [gs:edi], bl
     mov byte [gs:edi+1], 0x4e
 
+    call SELECTOR_C_GATE:0
     jmp $           ; stop here!!!
 B_CODE_LEN  equ $ - label_b_code
+
+;-------------------------
+; C data
+;-------------------------
+label_c_data:
+    db "Cat"
+C_DATA_LEN  equ $ - label_c_data
+
+;-------------------------
+; C stack
+;-------------------------
+label_c_stack:
+    times 256 db 0
+C_STACK_LEN equ $ - label_c_stack
+
+;-------------------------
+; C code
+;-------------------------
+label_c_code:
+; print log
+    mov ax, SELECTOR_VIDEO
+    mov gs, ax
+    mov edi, (80*19)*2
+    mov ax, SELECTOR_C_DATA
+    mov ds, ax
+    mov bl, [ds:0]
+    mov byte [gs:edi], bl
+    mov byte [gs:edi+1], 0x4e
+
+    retf
+C_CODE_LEN  equ $ - label_c_code
 

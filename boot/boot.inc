@@ -35,6 +35,18 @@ LOADER_START_ADDR       equ LOADER_BASE_ADDR + 0x200 ; 512 Byte data
     mov byte [%1 + 7], ah
 %endmacro
 
+%macro CALL_GATE 4
+;   %1  : selector
+;   %2  : offset
+;   %3  : parameter count
+;   %4  : attribute
+    dw %2 & 0xffff
+    dw %1 & 0xffff
+    db %3 & 0x1f
+    db ((%4 >> 8) & 0xE0) | 0xC
+    dw (%2 >> 16) & 0xffff
+%endmacro
+
 ;-------------------------
 ; GDT attribute
 ;-------------------------
