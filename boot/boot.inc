@@ -35,6 +35,16 @@ LOADER_START_ADDR       equ LOADER_BASE_ADDR + 0x200 ; 512 Byte data
     mov byte [%1 + 7], ah
 %endmacro
 
+%macro TASK_GATE 2
+;   %1  : selector
+;   %2  : attribute
+    dw 0x0
+    dw %1 & 0xffff
+    db 0x0
+    db ((%2 >> 8) & 0xE0) | 0x5
+    dw 0x0
+%endmacro
+
 ;-------------------------
 ; GDT attribute
 ;-------------------------
@@ -57,6 +67,7 @@ GDT_S_SW        equ (0x1 << 12)
 GDT_TYPE_CODE   equ (0x8 << 8)
 GDT_TYPE_DATA   equ (0x2 << 8)
 GDT_TYPE_LDT    equ (0x2 << 8)
+GDT_TYPE_TSS    equ (0x9 << 8)
 
 ;-------------------------
 ; GDT Selector Attribute
