@@ -4,54 +4,49 @@ section loader vstart=LOADER_BASE_ADDR
 ;-------------------------
 ; GDT
 ;-------------------------
-;                       base,       limit,      attribute
-gdt_base:   DESCRIPTOR  0x0,        0x0,        0x0
-code_desc:  DESCRIPTOR  0x0,        0xf_ffff,   GDT_G_4K \
-                                                + GDT_D_32 \
-                                                + GDT_L_32 \
-                                                + GDT_AVL_0 \
-                                                + GDT_P_1 \
-                                                + GDT_DPL_0 \
-                                                + GDT_S_SW \
-                                                + GDT_TYPE_CODE
-data_desc:  DESCRIPTOR  0x0,        0xf_ffff,   GDT_G_4K \
-                                                + GDT_D_32 \
-                                                + GDT_L_32 \
-                                                + GDT_AVL_0 \
-                                                + GDT_P_1 \
-                                                + GDT_DPL_0 \
-                                                + GDT_S_SW \
-                                                + GDT_TYPE_DATA
-video_desc: DESCRIPTOR  0xb_8000,   0x0_7fff,   GDT_G_1 \
-                                                + GDT_D_32 \
-                                                + GDT_L_32 \
-                                                + GDT_AVL_0 \
-                                                + GDT_P_1 \
-                                                + GDT_DPL_0 \
-                                                + GDT_S_SW \
-                                                + GDT_TYPE_DATA
+;                       base,       limit,          attribute
+gdt_base:   DESCRIPTOR  0x0,        0x0,            0x0
+video_desc: DESCRIPTOR  0xb_8000,   0x0_7fff,       GDT_G_1 \
+                                                    + GDT_D_32 \
+                                                    + GDT_L_32 \
+                                                    + GDT_AVL_0 \
+                                                    + GDT_P_1 \
+                                                    + GDT_DPL_0 \
+                                                    + GDT_S_SW \
+                                                    + GDT_TYPE_DATA
+a_code_desc:  DESCRIPTOR  0x0,      A_CODE_LEN-1,   GDT_G_1 \
+                                                    + GDT_D_32 \
+                                                    + GDT_L_32 \
+                                                    + GDT_AVL_0 \
+                                                    + GDT_P_1 \
+                                                    + GDT_DPL_0 \
+                                                    + GDT_S_SW \
+                                                    + GDT_TYPE_CODE
+a_data_desc:  DESCRIPTOR  0x0,      A_DATA_LEN-1,   GDT_G_1 \
+                                                    + GDT_D_32 \
+                                                    + GDT_L_32 \
+                                                    + GDT_AVL_0 \
+                                                    + GDT_P_1 \
+                                                    + GDT_DPL_0 \
+                                                    + GDT_S_SW \
+                                                    + GDT_TYPE_DATA
 
 GDT_SIZE    equ $ - gdt_base
 GDT_LIMIT   equ GDT_SIZE - 1
-times 256-($-$$) db 0    ; total 32 GDT element
 
-;-------------------------
-; fix data location
-;-------------------------
-
-
+gdtr    dw GDT_LIMIT    ; [15:0] gdt limit
+        dd gdt_base     ; [47:16] gdt base
 ;-------------------------
 ; GDT selector
 ;-------------------------
-SELECTOR_CODE   equ (code_desc - gdt_base) + TI_GDT + RPL_0
-SELECTOR_DATA   equ (data_desc - gdt_base) + TI_GDT + RPL_0
 SELECTOR_VIDEO  equ (video_desc - gdt_base) + TI_GDT + RPL_0
+SELECTOR_A_CODE   equ (a_code_desc - gdt_base) + TI_GDT + RPL_0
+SELECTOR_A_DATA   equ (a_data_desc - gdt_base) + TI_GDT + RPL_0
 
 ;-------------------------
-; RAM detection
+; data
 ;-------------------------
-
-
+    message db "2 Loader"
 
 times 512-($-$$) db 0
 loader_start:
@@ -81,6 +76,13 @@ loader_start:
     int 0x10        ; BIOS interrupt call
 
 ;-------------------------
+; set gdt base address
+;-------------------------
+;                       GDT,            sreg,   base address
+    DESCRIPTOR_SET_BASE a_code_desc,    cs,     label_a_code
+    DESCRIPTOR_SET_BASE a_data_desc,    ds,     label_a_data
+
+;-------------------------
 ; enable protected mode
 ;-------------------------
 ; enable A20
@@ -96,30 +98,30 @@ loader_start:
     or eax, 0x0000_0001
     mov cr0, eax
 
-    jmp SELECTOR_CODE:p_mode_start
+    jmp SELECTOR_A_CODE:0
 
-;-------------------------
-; protected mode start
-;-------------------------
 [bits 32]
-p_mode_start:
-   mov ax, SELECTOR_DATA
-   mov ds, ax
-   mov es, ax
-   mov ss, ax
-   mov fs, ax
-   mov gs, ax
-   mov esp,LOADER_STACK_TOP
+;-------------------------
+; A data
+;-------------------------
+label_a_data:
+    db "Apple"
+A_DATA_LEN  equ $ - label_a_data
 
 ;-------------------------
-; pause the process
+; A code
 ;-------------------------
-    jmp $           ; stop here!!!
+label_a_code:
+; print log
+    mov ax, SELECTOR_VIDEO
+    mov gs, ax
+    mov edi, (80*17)*2
+    mov ax, SELECTOR_A_DATA
+    mov ds, ax
+    mov bl, [ds:0]
+    mov byte [gs:edi], bl
+    mov byte [gs:edi+1], 0x4e
 
-;-------------------------
-; non-fix data location
-;-------------------------
-    message db "2 Loader"
-    gdtr    dw GDT_LIMIT    ; [15:0] gdt limit
-            dd gdt_base     ; [47:16] gdt base
+    jmp $
+A_CODE_LEN  equ $ - label_a_code
 

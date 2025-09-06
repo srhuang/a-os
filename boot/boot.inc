@@ -21,6 +21,20 @@ LOADER_START_ADDR       equ LOADER_BASE_ADDR + 0x200 ; 512 Byte data
     db (%1 >> 24) & 0xff
 %endmacro
 
+%macro DESCRIPTOR_SET_BASE 3
+;   %1 : GDT
+;   %2 : segment register
+;   %3 : base address
+    xor eax, eax
+    mov ax, %2
+    shl eax, 4
+    add eax, %3
+    mov word [%1 + 2], ax
+    shr eax, 16
+    mov byte [%1 + 4], al
+    mov byte [%1 + 7], ah
+%endmacro
+
 ;-------------------------
 ; GDT attribute
 ;-------------------------
