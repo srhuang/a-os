@@ -79,15 +79,15 @@ $(BUILD_DIR)/%.o: $(USR_SRC)/%.s
 #####################################
 #		Lib Object Files			#
 #####################################
-lib_obj		+= 
+lib_obj		+= $(BUILD_DIR)/string.o 
 
 #####################################
 #		Kernel Object Files			#
 #####################################
-kernel_obj	+= $(lib_obj)
 kernel_obj 	+= $(BUILD_DIR)/main.o
 kernel_obj	+= $(BUILD_DIR)/print.o
 kernel_obj	+= $(BUILD_DIR)/test.o
+kernel_obj	+= $(lib_obj)
 
 #####################################
 #		User Object Files			#
