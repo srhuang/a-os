@@ -86,6 +86,8 @@ lib_obj		+=
 #####################################
 kernel_obj	+= $(lib_obj)
 kernel_obj 	+= $(BUILD_DIR)/main.o
+kernel_obj	+= $(BUILD_DIR)/print.o
+kernel_obj	+= $(BUILD_DIR)/test.o
 
 #####################################
 #		User Object Files			#
