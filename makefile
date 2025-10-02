@@ -88,6 +88,7 @@ kernel_obj 	+= $(BUILD_DIR)/main.o
 kernel_obj	+= $(BUILD_DIR)/test.o
 kernel_obj	+= $(BUILD_DIR)/print.o
 kernel_obj	+= $(BUILD_DIR)/bitmap.o
+kernel_obj	+= $(BUILD_DIR)/list.o
 kernel_obj	+= $(lib_obj)
 
 #####################################
