@@ -101,7 +101,7 @@ find_max_addr_loop:
     mov eax, [ebx]          ; base address low bits
     add eax, [ebx+8]        ; length low bits
     cmp edx, eax            ; compare with max address
-    jge next_ards
+    jae next_ards
     mov edx, eax            ; update the max address
 next_ards:
     add ebx, 20             ; next ARDS structure

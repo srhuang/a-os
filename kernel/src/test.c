@@ -3,6 +3,7 @@
 #include "bitmap.h"
 #include "list.h"
 #include "stddef.h"
+#include "memory.h"
 
 //=========================
 // print.h
@@ -410,6 +411,73 @@ void test_list()
 }
 
 //=========================
+// memory.h
+//=========================
+void test_memory()
+{
+    put_str("test page_malloc(PF_KERNEL, 3): ");
+    void* vaddr_1 = page_malloc(PF_KERNEL, NULL, 3);
+    put_int((uint32_t)vaddr_1);
+    put_str("\n");
+
+    put_str("test page_malloc(0xC0102000, 3): ");
+    void* vaddr_2 = page_malloc(PF_KERNEL, (void*)0xC0102000, 3);
+    put_int((uint32_t)vaddr_2);
+    put_str("\n");
+
+    put_str("test page_malloc(0xC0107000, 3): ");
+    void* vaddr_3 = page_malloc(PF_KERNEL, (void*)0xC0107000, 3);
+    put_int((uint32_t)vaddr_3);
+    put_str("\n");
+
+    /*
+    put_str("test page_free\n");
+    page_free(PF_KERNEL, vaddr_1, 2);
+    //*/
+
+    put_str("test sys_malloc(31): ");
+    void* vaddr_4 = sys_malloc(31);
+    put_int((uint32_t)vaddr_4);
+    put_str("\n");
+
+    //*
+    put_str("test sys_malloc(29): ");
+    void* vaddr_5 = sys_malloc(29);
+    put_int((uint32_t)vaddr_5);
+    put_str("\n");
+    //*/
+
+    /*
+    extern struct mem_block_desc k_mem_block[MEM_BLOCK_CNT];
+    put_str("test mem_block free list\n");
+    struct list* plist;
+    struct list_elem* cur_elem;
+    int idx;
+    for (idx=0; idx<MEM_BLOCK_CNT; idx++)
+    {
+        put_int(k_mem_block[idx].block_size);
+        put_str(" byte free list: ");
+
+        plist = &k_mem_block[idx].free_list;
+        cur_elem = plist->head.next;
+        int cnt = 0;
+        while (cur_elem != &plist->tail)
+        {
+            cnt++;
+            cur_elem = cur_elem->next;
+        }
+        put_int(cnt);
+        put_str("\n");
+    }
+    //*/
+
+    //*
+    put_str("test sys_free\n");
+    sys_free(vaddr_4);
+    //*/
+}
+
+//=========================
 // test_all
 //=========================
 void test_all()
@@ -430,8 +498,12 @@ void test_all()
     test_bitmap();
     //*/
 
-    //* list.h
+    /* list.h
     test_list();
+    //*/
+
+    //* memory.h
+    test_memory();
     //*/
 }
 
