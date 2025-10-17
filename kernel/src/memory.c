@@ -6,6 +6,13 @@
 #include "list.h"
 
 //=========================
+// debugging
+//=========================
+#define DEBUG (0)
+#define TRACE_STR(x) do {if(DEBUG) put_str(x);} while(0)
+#define TRACE_INT(x) do {if(DEBUG) put_int(x);} while(0)
+
+//=========================
 // internal struct
 //=========================
 struct arena {

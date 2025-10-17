@@ -91,6 +91,8 @@ kernel_obj	+= $(BUILD_DIR)/bitmap.o
 kernel_obj	+= $(BUILD_DIR)/list.o
 kernel_obj	+= $(BUILD_DIR)/init.o
 kernel_obj	+= $(BUILD_DIR)/memory.o
+kernel_obj	+= $(BUILD_DIR)/kernel.o
+kernel_obj	+= $(BUILD_DIR)/interrupt.o
 kernel_obj	+= $(lib_obj)
 
 #####################################
