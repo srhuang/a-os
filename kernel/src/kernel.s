@@ -26,6 +26,11 @@ intr_%1_entry:
     push gs
     pushad                      ; backup 8 registers
 
+    ; 8259A EOI
+    mov al,0x20                 ; EOI
+    out 0xA0,al                 ; EOI to slave
+    out 0x20,al                 ; EOI to master
+
     push %1                     ; interrupt number
     call [intr_func + %1 * 4]   ; call the external function
     add esp, 4                  ; clear argument in stack

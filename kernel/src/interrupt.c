@@ -2,6 +2,7 @@
 #include "kernel.h"
 #include "stddef.h"
 #include "print.h"
+#include "io.h"
 
 //=========================
 // debugging
@@ -126,9 +127,45 @@ static void idt_init(void)
     asm volatile("lidt %0" : : "m" (idt_operand));
 }
 
+
+static void pic_init(void)
+{
+    // master PIC
+    outb (PIC_M_CTRL, 0x11);   // ICW1: edge trigger mode, ICW4 needed
+    outb (PIC_M_DATA, 0x20);   // ICW2: vector address start from 0x20
+    outb (PIC_M_DATA, 0x04);   // ICW3: IRQ2 for slave
+    outb (PIC_M_DATA, 0x01);   // ICW4: 8086 mode, normal EOI
+
+    //slave PIC
+    outb (PIC_S_CTRL, 0x11);    // ICW1: edge trigger mode, ICW4 needed
+    outb (PIC_S_DATA, 0x28);    // ICW2: vector address start from 0x28
+    outb (PIC_S_DATA, 0x02);    // ICW3: IRQ2 for slave
+    outb (PIC_S_DATA, 0x01);    // ICW4: 8086 mode, normal EOI
+
+    // interrupt mask
+    outb (PIC_M_DATA, 0xFF);    // master PIC
+    outb (PIC_S_DATA, 0xFF);    // slave PIC
+}
+
 //=========================
 // external functions
 //=========================
+bool intr_get_status(void)
+{
+    uint32_t eflags = 0;
+    asm volatile("pushfl; popl %0" : "=g" (eflags));
+    return (eflags & 0x200) ? true : false;
+}
+
+void intr_set_status (bool intr_status)
+{
+    if (true == intr_status) {
+        asm volatile("sti");
+    } else {
+        asm volatile("cli");
+    }
+}
+
 void register_handler(uint8_t vec, void* func)
 {
     intr_func[vec] = func;
@@ -138,5 +175,6 @@ void intr_init()
 {
     TRACE_STR("intr_init()\n");
     idt_init();
+    pic_init();
 }
 

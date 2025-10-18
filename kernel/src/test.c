@@ -492,6 +492,21 @@ void test_intr()
     /*
     asm volatile("int $0x1F");
     //*/
+
+    //* enable interrupt
+    intr_set_status(true);
+    //*/
+
+    /* disable interrupt
+    intr_set_status(false);
+    //*/
+
+    // get interrupt status
+    put_str("intr_get_statu: ");
+    bool ret = intr_get_status();
+    put_int(ret);
+    put_str("\n");
+
 }
 
 //=========================
