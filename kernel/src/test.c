@@ -507,6 +507,34 @@ void test_intr()
     put_int(ret);
     put_str("\n");
 
+    // test system call
+    extern void test_syscall0(void);
+    extern int test_syscall1(int a);
+    extern int test_syscall2(int a, int b);
+    extern int test_syscall3(int a, int b, int c);
+
+    put_str("test syscall0()\n");
+    test_syscall0();
+    int sysret;
+
+    put_str("test_syscall1()\n");
+    sysret = test_syscall1(0x111);
+    put_str("ret= 0x");
+    put_int(sysret);
+    put_str("\n");
+
+    put_str("test_syscall2()\n");
+    sysret = test_syscall2(0x111, 0x222);
+    put_str("ret= 0x");
+    put_int(sysret);
+    put_str("\n");
+
+    put_str("test_syscall3()\n");
+    sysret = test_syscall3(0x111, 0x222, 0x333);
+    put_str("ret= 0x");
+    put_int(sysret);
+    put_str("\n");
+
 }
 
 //=========================

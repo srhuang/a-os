@@ -25,6 +25,7 @@
 // external variable
 //=========================
 extern void* intr_entry[IDT_DESC_CNT];
+extern void* syscall_entry(void);
 
 //=========================
 // function

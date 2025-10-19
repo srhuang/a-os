@@ -92,6 +92,10 @@ static void idt_init(void)
         }
     }
 
+    // for system call 0x80
+    attr = GDT_P_1 + GDT_DPL_3;
+    make_idt_table(&idt_table[0x80], attr, syscall_entry);
+
     // assign name of interrupt
     intr_name[0x00] = "#DE Divide Error";
     intr_name[0x01] = "#DB Debug Exception";

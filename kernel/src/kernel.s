@@ -3,6 +3,7 @@
 ; external
 ;-------------------------
 extern intr_func
+extern syscall_func
 
 ;-------------------------
 ; define
@@ -105,3 +106,34 @@ intr_entry:
     VECTOR 0x2E,ZERO    ; Primary IDE channel
     VECTOR 0x2F,ZERO    ; Secondary IDE channel
 
+;-------------------------
+; system call entry
+;-------------------------
+section .text
+global syscall_entry
+syscall_entry:
+; backup registers
+    ZERO                        ; reserved for error code
+    push ds
+    push es
+    push fs
+    push gs
+    pushad                      ; backup 8 registers
+
+    push edx                    ; argument 3
+    push ecx                    ; argument 2
+    push ebx                    ; argument 1
+    call [syscall_func + eax * 4]   ; call the external function
+    add esp, 12                 ; clear argument in stack
+
+; return value stored in EAX
+    mov [esp + 7 * 4], eax
+
+; restore registers
+    popad                       ; restore 8 registers
+    pop gs
+    pop fs
+    pop es
+    pop ds
+    add esp, 4                  ; clear error code in stack
+    iretd
