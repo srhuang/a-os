@@ -7,7 +7,7 @@
 //=========================
 // debugging
 //=========================
-#define DEBUG (1)
+#define DEBUG (0)
 #define TRACE_STR(x) do {if(DEBUG) put_str(x);} while(0)
 #define TRACE_INT(x) do {if(DEBUG) put_int(x);} while(0)
 
@@ -147,7 +147,7 @@ static void pic_init(void)
     outb (PIC_S_DATA, 0x01);    // ICW4: 8086 mode, normal EOI
 
     // interrupt mask
-    outb (PIC_M_DATA, 0xFF);    // master PIC
+    outb (PIC_M_DATA, 0xFE);    // master PIC
     outb (PIC_S_DATA, 0xFF);    // slave PIC
 }
 

@@ -5,6 +5,7 @@
 #include "stddef.h"
 #include "memory.h"
 #include "interrupt.h"
+#include "timer.h"
 
 //=========================
 // print.h
@@ -507,7 +508,7 @@ void test_intr()
     put_int(ret);
     put_str("\n");
 
-    // test system call
+    /* test system call
     extern void test_syscall0(void);
     extern int test_syscall1(int a);
     extern int test_syscall2(int a, int b);
@@ -534,6 +535,32 @@ void test_intr()
     put_str("ret= 0x");
     put_int(sysret);
     put_str("\n");
+    //*/
+
+}
+
+void test_timer()
+{
+    put_str("100 ms to jiffies: 0x");
+    put_int(msecs_to_jiffies(100));
+    put_str("\n");
+
+    put_str("100 us to jiffies: 0x");
+    put_int(usecs_to_jiffies(100));
+    put_str("\n");
+
+    put_str("5000 jiffies to ms: 0x");
+    put_int(jiffies_to_msecs(5000));
+    put_str("\n");
+
+    put_str("50 jiffies to us: 0x");
+    put_int(jiffies_to_usecs(50));
+    put_str("\n");
+
+    put_str("jiffies: 0x");
+    put_int(jiffies);
+    put_str("\n");
+
 
 }
 
@@ -566,8 +593,12 @@ void test_all()
     test_memory();
     //*/
 
-    //* interrupt.h
+    /* interrupt.h
     test_intr();
+    //*/
+
+    //* timer.h
+    test_timer();
     //*/
 }
 

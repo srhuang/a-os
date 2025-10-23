@@ -94,7 +94,7 @@ kernel_obj	+= $(BUILD_DIR)/memory.o
 kernel_obj	+= $(BUILD_DIR)/kernel.o
 kernel_obj	+= $(BUILD_DIR)/interrupt.o
 kernel_obj	+= $(BUILD_DIR)/syscall_sys.o
-kernel_obj	+= $(BUILD_DIR)/syscall_usr.o	# only for test
+kernel_obj	+= $(BUILD_DIR)/timer.o
 kernel_obj	+= $(lib_obj)
 
 #####################################
