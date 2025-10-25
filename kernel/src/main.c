@@ -1,7 +1,8 @@
 #include "test.h"
 #include "print.h"
 #include "init.h"
-
+#include "thread.h"
+#include "sched.h"
 int main(void) {
 
     put_str("\nKernel main()\n");
@@ -10,6 +11,11 @@ int main(void) {
     // test functions
     test_all();
 
-    while(1);
+    //*
+    kthread_exit();
+    //*/
+
+    //while(1);
+
     return 0;
 }

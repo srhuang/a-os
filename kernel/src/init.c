@@ -3,6 +3,7 @@
 #include "interrupt.h"
 #include "syscall_sys.h"
 #include "timer.h"
+#include "thread.h"
 
 void kernel_init()
 {
@@ -10,6 +11,7 @@ void kernel_init()
     intr_init();
     syscall_init();
     timer_init();
+    kthread_init();
 
     // enable interrupt
     intr_set_status(true);

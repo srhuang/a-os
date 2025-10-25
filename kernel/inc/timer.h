@@ -50,6 +50,8 @@ uint32_t    msecs_to_jiffies(uint32_t);
 uint32_t    usecs_to_jiffies(uint32_t);
 uint32_t    jiffies_to_msecs(uint32_t);
 uint32_t    jiffies_to_usecs(uint32_t);
+void        msleep(uint32_t);
+void        usleep(uint32_t);
 void        timer_init(void);
 
 #endif

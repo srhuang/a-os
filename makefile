@@ -95,6 +95,9 @@ kernel_obj	+= $(BUILD_DIR)/kernel.o
 kernel_obj	+= $(BUILD_DIR)/interrupt.o
 kernel_obj	+= $(BUILD_DIR)/syscall_sys.o
 kernel_obj	+= $(BUILD_DIR)/timer.o
+kernel_obj	+= $(BUILD_DIR)/thread.o
+kernel_obj	+= $(BUILD_DIR)/sched.o
+kernel_obj	+= $(BUILD_DIR)/switch.o
 kernel_obj	+= $(lib_obj)
 
 #####################################

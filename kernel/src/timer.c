@@ -2,6 +2,8 @@
 #include "print.h"
 #include "io.h"
 #include "interrupt.h"
+#include "thread.h"
+#include "sched.h"
 
 //=========================
 // debugging
@@ -50,6 +52,13 @@ static void timer_handler(void)
     TRACE_INT(jiffies);
     TRACE_STR("\n");
     //*/
+
+    struct task_struct* cur_task = kthread_current();
+    if (0 == cur_task->time_slice) {
+        schedule();
+    } else {
+        cur_task->time_slice--;
+    }
 }
 
 //=========================
@@ -73,6 +82,28 @@ uint32_t jiffies_to_msecs(uint32_t js)
 uint32_t jiffies_to_usecs(uint32_t js)
 {
     return (js * SYS_TICK_US);
+}
+
+void msleep(uint32_t ms)
+{
+    uint32_t sleep_ticks = msecs_to_jiffies(ms);
+    uint32_t start_tick = jiffies;
+
+    while (jiffies-start_tick < sleep_ticks)
+    {
+        kthread_yield();
+    }
+}
+
+void usleep(uint32_t us)
+{
+    uint32_t sleep_ticks = usecs_to_jiffies(us);
+    uint32_t start_tick = jiffies;
+
+    while (jiffies-start_tick < sleep_ticks)
+    {
+        kthread_yield();
+    }
 }
 
 void timer_init(void)
