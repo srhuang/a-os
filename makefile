@@ -98,6 +98,7 @@ kernel_obj	+= $(BUILD_DIR)/timer.o
 kernel_obj	+= $(BUILD_DIR)/thread.o
 kernel_obj	+= $(BUILD_DIR)/sched.o
 kernel_obj	+= $(BUILD_DIR)/switch.o
+kernel_obj	+= $(BUILD_DIR)/lock.o
 kernel_obj	+= $(lib_obj)
 
 #####################################
