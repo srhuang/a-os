@@ -80,6 +80,7 @@ $(BUILD_DIR)/%.o: $(USR_SRC)/%.s
 #		Lib Object Files			#
 #####################################
 lib_obj		+= $(BUILD_DIR)/string.o 
+lib_obj		+= $(BUILD_DIR)/stdio.o 
 
 #####################################
 #		Kernel Object Files			#
@@ -99,6 +100,7 @@ kernel_obj	+= $(BUILD_DIR)/thread.o
 kernel_obj	+= $(BUILD_DIR)/sched.o
 kernel_obj	+= $(BUILD_DIR)/switch.o
 kernel_obj	+= $(BUILD_DIR)/lock.o
+kernel_obj	+= $(BUILD_DIR)/printk.o
 kernel_obj	+= $(lib_obj)
 
 #####################################

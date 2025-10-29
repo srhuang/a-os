@@ -61,7 +61,7 @@ static void idle_thread(void* arg)
     uint32_t count = 0;
     while(1) {
 
-        //*
+        /*
         set_cursor(80);
         put_str("idle:0x");
         put_int(count++);
