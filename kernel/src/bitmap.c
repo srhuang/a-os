@@ -1,5 +1,6 @@
 #include "bitmap.h"
 #include "string.h"
+#include "assert.h"
 
 // The bitmap_init() function initializes the value of bitmap.
 void bitmap_init(struct bitmap* btmp, uint8_t* btmp_addr, uint32_t len)
@@ -105,6 +106,7 @@ void bitmap_release(struct bitmap* btmp, uint32_t btmp_idx, uint32_t cnt)
     int n = 0;
     while (n < cnt)
     {
+        assert(true == bitmap_check(btmp, btmp_idx + n));
         bitmap_set(btmp, btmp_idx + n, false);
         n++;
     }

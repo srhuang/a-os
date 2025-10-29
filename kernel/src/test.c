@@ -789,7 +789,19 @@ void thread_xxx(void* arg)
 
     while (1)
     {
+        /*
         printk("Thread %s:%d ", arg, count++);
+        //*/
+
+        /*
+        void* vaddr = page_malloc(PF_KERNEL, NULL, 10);
+        page_free(PF_KERNEL, vaddr, 10);
+        //*/
+
+        //*
+        void* vaddr = sys_malloc(31);
+        sys_free(vaddr);
+        //*/
     }
 }
 
@@ -799,7 +811,19 @@ void thread_yyy(void* arg)
 
     while (1)
     {
+        /*
         printk("Thread %s:%d ", arg, count++);
+        //*/
+
+        /*
+        void* vaddr = page_malloc(PF_KERNEL, NULL, 10);
+        page_free(PF_KERNEL, vaddr, 10);
+        //*/
+
+        //*
+        void* vaddr = sys_malloc(31);
+        sys_free(vaddr);
+        //*/
     }
 }
 
@@ -809,7 +833,19 @@ void thread_zzz(void* arg)
 
     while (1)
     {
+        /*
         printk("Thread %s:%d ", arg, count++);
+        //*/
+
+        /*
+        void* vaddr = page_malloc(PF_KERNEL, NULL, 10);
+        page_free(PF_KERNEL, vaddr, 10);
+        //*/
+
+        //*
+        void* vaddr = sys_malloc(31);
+        sys_free(vaddr);
+        //*/
     }
 }
 
@@ -865,15 +901,15 @@ void test_all()
     test_thread();
     //*/
 
-    //* printk.h and stdio.h
+    /* printk.h and stdio.h
     test_printk();
     //*/
 
-    /*
+    //*
     test_concurrency();
     //*/
 
-    //* test assert
+    /* test assert
     assert(1==2);
     //*/
 }

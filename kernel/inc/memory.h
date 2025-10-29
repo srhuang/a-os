@@ -3,6 +3,7 @@
 #include "stdint.h"
 #include "bitmap.h"
 #include "list.h"
+#include "lock.h"
 
 //=========================
 // define
@@ -46,18 +47,21 @@ struct p_pool {
    uint32_t         paddr_start;
    uint32_t         size;
    struct bitmap    paddr_bitmap;
+   struct mutex     mlock;
 };
 
 // The system contains multiple virtual pools.
 struct v_pool {
     uint32_t        vaddr_start;
     struct bitmap   vaddr_bitmap;
+    struct mutex    mlock;
 };
 
 struct mem_block_desc {
-    uint32_t block_size;
-    uint32_t blocks_per_arena;
-    struct list free_list;
+    uint32_t        block_size;
+    uint32_t        blocks_per_arena;
+    struct list     free_list;
+    struct mutex    mlock;
 };
 
 //=========================

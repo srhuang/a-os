@@ -40,6 +40,9 @@ struct v_pool k_v_pool;
 // for memory block management
 struct mem_block_desc   k_mem_block[MEM_BLOCK_CNT];
 
+// lock for page table
+static struct mutex mlock_pgtable;
+
 //=========================
 // internal functions
 //=========================
@@ -160,7 +163,10 @@ static void* page_acquire(struct v_pool* vp, struct p_pool* pp,\
     void* paddr = NULL;
 
     // acquire virtual address
+    mutex_lock(&vp->mlock);
     vaddr_ret = vaddr_acquire(vp, vaddr, pg_cnt);
+    mutex_unlock(&vp->mlock);
+
     if (NULL == vaddr_ret) {
         return NULL;
     }
@@ -170,13 +176,19 @@ static void* page_acquire(struct v_pool* vp, struct p_pool* pp,\
     void* vaddr_idx = vaddr_ret;
     while (n < pg_cnt)
     {
+        mutex_lock(&pp->mlock);
         paddr = palloc(pp);
+        mutex_unlock(&pp->mlock);
+
         if (NULL == paddr) {
             return NULL;
         }
 
         // add into the page table
+        mutex_lock(&mlock_pgtable);
         page_table_add(vaddr_idx, paddr);
+        mutex_unlock(&mlock_pgtable);
+
         vaddr_idx += PG_SIZE;
         n++;
     }
@@ -196,16 +208,24 @@ static void page_release(struct v_pool* vp, struct p_pool* pp,\
     {
         // free physical memory
         paddr = (void*)addr_v2p(vaddr_idx);
+
+        mutex_lock(&pp->mlock);
         pfree(pp, paddr);
+        mutex_unlock(&pp->mlock);
 
         // remove page table
+        mutex_lock(&mlock_pgtable);
         page_table_remove(vaddr_idx);
+        mutex_unlock(&mlock_pgtable);
+
         vaddr_idx += PG_SIZE;
         n++;
     }
 
     // release virtual memory
+    mutex_lock(&vp->mlock);
     vaddr_release(vp, vaddr_start, pg_cnt);
+    mutex_unlock(&vp->mlock);
 }
 
 static void pool_init(uint32_t mem_total_size)
@@ -270,6 +290,10 @@ static void pool_init(uint32_t mem_total_size)
     TRACE_INT((uint32_t)u_p_pool.paddr_bitmap.bits);
     TRACE_STR("\n");
 
+    // phusical pool lock
+    mutex_init(&k_p_pool.mlock);
+    mutex_init(&u_p_pool.mlock);
+
     // virtual pool
     k_v_pool.vaddr_start = K_HEAP_START;
 
@@ -287,6 +311,8 @@ static void pool_init(uint32_t mem_total_size)
     TRACE_INT((uint32_t)k_v_pool.vaddr_bitmap.bits);
     TRACE_STR("\n");
 
+    // virtual pool lock
+    mutex_init(&k_v_pool.mlock);
 }
 
 static struct mem_block* arena2block(struct arena* a, uint32_t idx)
@@ -424,7 +450,9 @@ void* sys_malloc(uint32_t size)
             }
         } //for
 
+        mutex_lock(&mblock[mblock_idx].mlock);
         vaddr = mem_acquire(vp, pp, mblock, mblock_idx);
+        mutex_unlock(&mblock[mblock_idx].mlock);
     } // if-else (size > 1024)
 
     return vaddr;
@@ -443,7 +471,9 @@ void sys_free(void* vaddr)
     if (a->is_page_cnt) {
         page_release(vp, pp, a, a->cnt);
     } else { // memory block
+        mutex_lock(&a->p_mem_block->mlock);
         mem_release(vp, pp, vaddr);
+        mutex_unlock(&a->p_mem_block->mlock);
     }
 }
 
@@ -459,6 +489,9 @@ void mem_block_init(struct mem_block_desc* p_mem_block)
             (PG_SIZE - sizeof(struct arena)) / block_size;
         list_init(&p_mem_block[idx].free_list);
 
+        // lock init
+        mutex_init(&p_mem_block[idx].mlock);
+
         block_size *= 2;
     }
 }
@@ -469,5 +502,6 @@ void mem_init()
     uint32_t mem_total_size = (*(uint32_t*)MEM_SIZE_ADDR);
     pool_init(mem_total_size);
     mem_block_init(k_mem_block);
+    mutex_init(&mlock_pgtable);
 }
 
