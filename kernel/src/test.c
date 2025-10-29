@@ -10,6 +10,7 @@
 #include "lock.h"
 #include "printk.h"
 #include "stdio.h"
+#include "assert.h"
 
 //=========================
 // print.h
@@ -870,6 +871,10 @@ void test_all()
 
     /*
     test_concurrency();
+    //*/
+
+    //* test assert
+    assert(1==2);
     //*/
 }
 

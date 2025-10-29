@@ -4,6 +4,7 @@
 #include "interrupt.h"
 #include "thread.h"
 #include "sched.h"
+#include "assert.h"
 
 //=========================
 // debugging
@@ -54,6 +55,11 @@ static void timer_handler(void)
     //*/
 
     struct task_struct* cur_task = kthread_current();
+
+    // stack overflow detection
+    assert(0x19880802 == cur_task->stack_magic);
+
+    //scheduler
     if (0 == cur_task->time_slice) {
         schedule();
     } else {
