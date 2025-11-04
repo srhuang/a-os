@@ -11,6 +11,7 @@
 #include "printk.h"
 #include "stdio.h"
 #include "assert.h"
+#include "ide.h"
 
 //=========================
 // print.h
@@ -860,6 +861,28 @@ void test_concurrency()
     kthread_run(taskZ);
 }
 
+void test_ide()
+{
+    uint8_t aaa[512] = {0x95, 0x27};
+    uint8_t bbb[512] = {0};
+    uint8_t buf[512];
+    struct ide_ptn* ptn = \
+        elem2entry(struct ide_ptn, ptn_tag, ptn_list.head.next);
+    struct ide_hd* hd = ptn->hd;
+
+    ide_read(hd, 1, buf, 1);
+    printk("before write:0x%x, 0x%x\n", buf[0], buf[1]);
+
+    ide_write(hd, 1, aaa, 1);
+
+    ide_read(hd, 1, buf, 1);
+    printk("after write:0x%x, 0x%x\n", buf[0], buf[1]);
+
+    // recover
+    ide_write(hd, 1, bbb, 1);
+
+}
+
 //=========================
 // test_all
 //=========================
@@ -905,12 +928,17 @@ void test_all()
     test_printk();
     //*/
 
-    //*
+    /*
     test_concurrency();
     //*/
 
     /* test assert
     assert(1==2);
     //*/
+
+    //* ide.h
+    test_ide();
+    //*/
+
 }
 

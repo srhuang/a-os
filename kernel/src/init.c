@@ -5,6 +5,7 @@
 #include "timer.h"
 #include "thread.h"
 #include "printk.h"
+#include "ide.h"
 
 void kernel_init()
 {
@@ -17,4 +18,6 @@ void kernel_init()
 
     // enable interrupt
     intr_set_status(true);
+
+    ide_init();
 }

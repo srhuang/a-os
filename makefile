@@ -102,6 +102,7 @@ kernel_obj	+= $(BUILD_DIR)/switch.o
 kernel_obj	+= $(BUILD_DIR)/lock.o
 kernel_obj	+= $(BUILD_DIR)/printk.o
 kernel_obj	+= $(BUILD_DIR)/assert.o
+kernel_obj	+= $(BUILD_DIR)/ide.o
 kernel_obj	+= $(lib_obj)
 
 #####################################
