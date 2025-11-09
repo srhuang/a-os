@@ -6,6 +6,7 @@
 #include "thread.h"
 #include "printk.h"
 #include "ide.h"
+#include "fs.h"
 
 void kernel_init()
 {
@@ -20,4 +21,5 @@ void kernel_init()
     intr_set_status(true);
 
     ide_init();
+    fs_init();
 }

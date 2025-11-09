@@ -13,7 +13,7 @@
 //=========================
 // debugging
 //=========================
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
     #define pr_debug(fmt, ...) printk(fmt, ##__VA_ARGS__)

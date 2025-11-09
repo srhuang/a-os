@@ -4,6 +4,7 @@
 #include "stdbool.h"
 #include "list.h"
 #include "lock.h"
+#include "bitmap.h"
 
 //=========================
 // define
@@ -51,6 +52,18 @@ struct ide_ptn
     uint32_t            sec_cnt;
     struct ide_hd*      hd;
     struct list_elem    ptn_tag;
+
+    // for file system
+    uint32_t            inode_base;
+    uint32_t            inode_cnt;
+    uint32_t            inode_btmp_lba;
+    struct bitmap       inode_btmp;
+    uint32_t            inode_table_lba;
+    uint32_t            blk_btmp_lba;
+    struct bitmap       blk_btmp;
+    uint32_t            blk_lba;
+    struct list         open_inodes;
+    struct mutex        mlock;
 };
 
 struct ide_hd
