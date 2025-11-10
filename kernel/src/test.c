@@ -933,6 +933,118 @@ void test_fs()
     printk("%s ---\n", __func__);
 }
 
+#include "inode.h"
+void test_inode()
+{
+    struct inode_sys* inode;
+    struct ide_ptn* ptn = \
+        elem2entry(struct ide_ptn, ptn_tag, ptn_list.head.next->next);
+
+    printk("%s +++\n", __func__);
+
+    //* clear file system on the partition
+    fs_unmount(ptn);
+    fs_format(ptn);
+    fs_mount(ptn);
+    //*/
+
+    // test inode_open(), inode_close()
+    printk("test inode_open()/inode_close()\n");
+    inode = inode_open(4097);
+    printk("i_no=%d, i_size=%d, i_block[0]=%d\n", \
+        inode->i_no, inode->i_size, inode->i_block[0]);
+    //inode_close(inode);
+
+    // print all open nodes
+    printk("print all open inodes: ");
+    struct list_elem* elem = ptn->open_inodes.head.next;
+    struct inode_sys* elem_inode;
+    while (elem != &ptn->open_inodes.tail)
+    {
+        elem_inode = elem2entry(struct inode_sys, inode_tag, elem);
+        printk("%d, ", elem_inode->i_no);
+
+        elem = elem->next;
+    }
+    printk("\n");
+
+    // test inode_acquire(), inode_release()
+    printk("test inode_acquire()/inode_release()\n");
+    inode = inode_acquire(ptn);
+    printk("new inode table:%d\n", inode->i_no);
+
+    // print all open nodes
+    printk("print all open inodes: ");
+    elem = ptn->open_inodes.head.next;
+    elem_inode;
+    while (elem != &ptn->open_inodes.tail)
+    {
+        elem_inode = elem2entry(struct inode_sys, inode_tag, elem);
+        printk("%d, ", elem_inode->i_no);
+
+        elem = elem->next;
+    }
+    printk("\n");
+    //inode_release(inode);
+
+    printk("inode_read()/inode_write()\n");
+    // prepare the data
+    void* buf = sys_malloc(BLOCK_SIZE*2);
+    uint8_t* p_buf = (uint8_t*)buf;
+    int idx = 0;
+    while (idx < BLOCK_SIZE*2)
+    {
+        *p_buf = idx % 256;
+        p_buf++;
+        idx++;
+    }
+
+    // write data to hard disk
+    inode_write(inode, 2048, (uint8_t*)buf, BLOCK_SIZE*2);
+
+    printk("inode re-open\n");
+    inode_close(inode);
+    inode = inode_open(4098);
+
+    // read data from hard disk
+    inode_read(inode, 4000, (uint8_t*)buf, 10);
+    idx = 0;
+    p_buf = (uint8_t*)buf;
+    printk("inode_read:");
+    while (idx < 10)
+    {
+        printk("0x%x ", *p_buf);
+        p_buf++;
+        idx++;
+    }
+    printk("\n");
+
+    inode_read(inode, 2048 + (BLOCK_SIZE*2) - 10, (uint8_t*)buf, 10);
+    idx = 0;
+    p_buf = (uint8_t*)buf;
+    printk("inode_read:");
+    while (idx < 10)
+    {
+        printk("0x%x ", *p_buf);
+        p_buf++;
+        idx++;
+    }
+    printk("\n");
+
+    printk("inode_erase()\n");
+    inode_erase(inode, BLOCK_SIZE);
+
+    inode_read(inode, 2048 + (BLOCK_SIZE*2) - 10, (uint8_t*)buf, 10);
+
+    inode_close(inode);
+    inode = inode_open(4098);
+    printk("test updating inode table, size=%d\n", inode->i_size);
+
+    sys_free(buf);
+
+    printk("%s ---\n", __func__);
+}
+
 //=========================
 // test_all
 //=========================
@@ -990,9 +1102,12 @@ void test_all()
     test_ide();
     //*/
 
-    //* fs.h
+    /* fs.h
     test_fs();
     //*/
 
+    //* inode.h
+    test_inode();
+    //*/
 }
 
