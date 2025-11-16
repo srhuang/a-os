@@ -78,6 +78,15 @@ static void* vaddr_acquire(struct v_pool* vp, void* vaddr, int pg_cnt)
 
     if (NULL == vaddr) {
         btmp_idx  = bitmap_acquire(&vp->vaddr_bitmap, pg_cnt);
+
+        //* for debugging
+        TRACE_STR("vaddr acquire:btmp_idx=0x");
+        TRACE_INT(btmp_idx);
+        TRACE_STR(", cnt=0x");
+        TRACE_INT(pg_cnt);
+        TRACE_STR("\n");
+        //*/
+
         if (-1 == btmp_idx) {
             return NULL;
         }
@@ -105,7 +114,17 @@ static void vaddr_release(struct v_pool* vp, void* vaddr, int pg_cnt)
     int btmp_idx = 0;
 
     btmp_idx = (vaddr_val - vp->vaddr_start) / PG_SIZE;
+
+    //* for debugging
+    TRACE_STR("vaddr release:btmp_idx=0x");
+    TRACE_INT(btmp_idx);
+    TRACE_STR(", cnt=0x");
+    TRACE_INT(pg_cnt);
+    TRACE_STR("\n");
+    //*/
+
     bitmap_release(&vp->vaddr_bitmap, btmp_idx, pg_cnt);
+
 }
 
 static void* palloc(struct p_pool* pp)
@@ -114,6 +133,13 @@ static void* palloc(struct p_pool* pp)
     int btmp_idx = -1;
 
     btmp_idx = bitmap_acquire(&pp->paddr_bitmap, 1);
+
+    //* for debugging
+    TRACE_STR("palloc:btmp_idx=0x");
+    TRACE_INT(btmp_idx);
+    TRACE_STR("\n");
+    //*/
+
     if (-1 == btmp_idx)
     {
         return NULL;
@@ -129,6 +155,13 @@ static void pfree(struct p_pool* pp, void* paddr)
     int btmp_idx = 0;
 
     btmp_idx = (paddr_val - pp->paddr_start) / PG_SIZE;
+
+    //* for debugging
+    TRACE_STR("pfree:btmp_idx=0x");
+    TRACE_INT(btmp_idx);
+    TRACE_STR("\n");
+    //*/
+
     bitmap_release(&pp->paddr_bitmap, btmp_idx, 1);
 }
 
@@ -440,6 +473,16 @@ void* sys_malloc(uint32_t size)
         a->cnt = page_cnt;
         a->is_page_cnt = true;
         vaddr = (void*)(a+1);
+
+        //* for debugging
+        uint32_t* p_arena = (uint32_t*)a;
+        TRACE_STR("sys_malloc:arena=0x");
+        TRACE_INT((uint32_t)p_arena);
+        TRACE_STR(", cnt=0x");
+        TRACE_INT(*(p_arena+1));
+        TRACE_STR("\n");
+        //*/
+
     } else { // using memory block
         // find a suitable size
         uint8_t mblock_idx = 0;
@@ -463,6 +506,15 @@ void sys_free(void* vaddr)
     struct v_pool*  vp;
     struct p_pool*  pp;
     struct arena*   a = block2arena((struct mem_block*)vaddr);
+
+    //* for debugging
+    uint32_t* p_arena = (uint32_t*)a;
+    TRACE_STR("sys_free:arena=0x");
+    TRACE_INT((uint32_t)p_arena);
+    TRACE_STR(", cnt=0x");
+    TRACE_INT(*(p_arena+1));
+    TRACE_STR("\n");
+    //*/
 
     // TODO: determine whether it is in kernel space or user space
     vp = &k_v_pool;
