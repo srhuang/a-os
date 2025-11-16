@@ -1045,6 +1045,81 @@ void test_inode()
     printk("%s ---\n", __func__);
 }
 
+#include "dir.h"
+void test_dir()
+{
+    struct inode_sys* inode;
+    struct ide_ptn* ptn = \
+        elem2entry(struct ide_ptn, ptn_tag, ptn_list.head.next->next);
+    struct dirstream* dir;
+    struct dirent* dir_entry;
+
+    printk("%s +++\n", __func__);
+
+    //* clear file system on the partition
+    fs_unmount(ptn);
+    fs_format(ptn);
+    fs_mount(ptn);
+    //*/
+
+    // test sys_opendir(), sys_closedir(), sys_readdir(), sys_rewinddir()
+    dir = sys_opendir("/");
+    printk("root:");
+    while ((dir_entry = sys_readdir(dir)) != NULL)
+    {
+        printk("%s ", dir_entry->filename);
+    }
+    printk("\n");
+
+    sys_rewinddir(dir);
+
+    printk("root:");
+    while ((dir_entry = sys_readdir(dir)) != NULL)
+    {
+        printk("%s ", dir_entry->filename);
+    }
+    printk("\n");
+    sys_closedir(dir);
+
+    dir = sys_opendir("/sdb_5");
+    printk("/sdb_5: ");
+    while ((dir_entry = sys_readdir(dir)) != NULL)
+    {
+        printk("%s(%d) ", dir_entry->filename, dir_entry->i_no);
+    }
+    printk("\n");
+    sys_closedir(dir);
+
+
+    // test sys_mkdir(), sys_rmdir()
+    sys_mkdir("/sdb_5/aaa/");
+    sys_mkdir("/sdb_5/bbb/");
+    sys_mkdir("/sdb_5/ccc/");
+    sys_rmdir("/sdb_5/aaa");
+
+    dir = sys_opendir("/sdb_5");
+    printk("/sdb_5: ");
+    while ((dir_entry = sys_readdir(dir)) != NULL)
+    {
+        printk("%s(%d) ", dir_entry->filename, dir_entry->i_no);
+    }
+    printk("\n");
+    sys_closedir(dir);
+
+    sys_mkdir("/sdb_5/bbb/111");
+
+    dir = sys_opendir("/sdb_5/bbb/");
+    printk("/sdb_5/bbb/: ");
+    while ((dir_entry = sys_readdir(dir)) != NULL)
+    {
+        printk("%s(%d) ", dir_entry->filename, dir_entry->i_no);
+    }
+    printk("\n");
+    sys_closedir(dir);
+
+    printk("%s ---\n", __func__);
+}
+
 //=========================
 // test_all
 //=========================
@@ -1106,8 +1181,12 @@ void test_all()
     test_fs();
     //*/
 
-    //* inode.h
+    /* inode.h
     test_inode();
+    //*/
+
+    //* dir.h
+    test_dir();
     //*/
 }
 
