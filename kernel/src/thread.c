@@ -6,6 +6,7 @@
 #include "list.h"
 #include "interrupt.h"
 #include "sched.h"
+#include "file.h"
 
 //=========================
 // debugging
@@ -51,6 +52,16 @@ static void main_thread_init(void)
     g_main_task->kstack = (void*)esp;
     strcpy(g_main_task->name, "main");
     g_main_task->stack_magic = 0x19880802;
+
+    // init file descriptor
+    g_main_task->open_fd[0] = stdin_no;
+    g_main_task->open_fd[1] = stdout_no;
+    g_main_task->open_fd[2] = stderr_no;
+    uint32_t task_fd_idx = 3;
+    while (task_fd_idx < MAX_FD_PER_TASK) {
+        g_main_task->open_fd[task_fd_idx] = -1;
+        task_fd_idx++;
+    }
 
     // start for scheduling
     kthread_run(g_main_task);
@@ -108,6 +119,16 @@ struct task_struct* kthread_create(threadfn fn, void* fn_arg, char* name)
     ks_sw->kthread  = kernel_thread;
     ks_sw->fn       = fn;
     ks_sw->fn_arg   = fn_arg;
+
+    // init file descriptor
+    task->open_fd[0] = stdin_no;
+    task->open_fd[1] = stdout_no;
+    task->open_fd[2] = stderr_no;
+    uint32_t task_fd_idx = 3;
+    while (task_fd_idx < MAX_FD_PER_TASK) {
+        task->open_fd[task_fd_idx] = -1;
+        task_fd_idx++;
+    }
 
     return task;
 }

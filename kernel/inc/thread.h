@@ -5,6 +5,7 @@
 //=========================
 // define
 //=========================
+#define MAX_FD_PER_TASK     (32)
 typedef void (*threadfn) (void*);
 
 enum task_status {
@@ -32,6 +33,9 @@ struct task_struct
 
     // task name
     char        name[16];
+
+    // file descriptor
+    int32_t     open_fd[MAX_FD_PER_TASK];
 
     // MUST be the last member
     uint32_t    stack_magic;

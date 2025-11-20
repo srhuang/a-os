@@ -7,6 +7,7 @@
 #include "printk.h"
 #include "ide.h"
 #include "fs.h"
+#include "file.h"
 
 void kernel_init()
 {
@@ -22,4 +23,5 @@ void kernel_init()
 
     ide_init();
     fs_init();
+    file_init();
 }

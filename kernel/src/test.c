@@ -1120,6 +1120,88 @@ void test_dir()
     printk("%s ---\n", __func__);
 }
 
+#include "file.h"
+void test_file()
+{
+    printk("%s +++\n", __func__);
+
+    //* clear file system on the partition
+    printk("\nformat the partition\n");
+    struct ide_ptn* ptn = \
+        elem2entry(struct ide_ptn, ptn_tag, ptn_list.head.next->next);
+    fs_unmount(ptn);
+    fs_format(ptn);
+    fs_mount(ptn);
+    //*/
+
+    struct dirstream* dir;
+    struct dirent* dir_entry;
+
+    // test sys_open(), sys_close(), sys_unlink()
+    printk("\ntest sys_open(), sys_close(), sys_unlink()\n");
+    int32_t fd = sys_open("/sdb_5/bbb", O_CREATE | O_APPEND);
+    struct task_struct* task = kthread_current();
+    printk("fd=%d, fd_idx=%d\n", fd, task->open_fd[fd]);
+    //sys_open("/sdb_5/bbb", 0);
+    //sys_close(fd);
+    //sys_unlink("/sdb_5/bbb");
+
+    dir = sys_opendir("/sdb_5");
+    printk("/sdb_5: ");
+    while ((dir_entry = sys_readdir(dir)) != NULL)
+    {
+        printk("%s(%d) ", dir_entry->filename, dir_entry->i_no);
+    }
+    printk("\n");
+    sys_closedir(dir);
+
+    // test sys_write(), sys_read()
+    printk("\ntest sys_write(), sys_read()\n");
+    void* buf = sys_malloc(BLOCK_SIZE*2);
+    uint8_t* p_buf = (uint8_t*)buf;
+    int idx = 0;
+    while (idx < BLOCK_SIZE*2)
+    {
+        *p_buf = idx % 256;
+        p_buf++;
+        idx++;
+    }
+    //sys_write(fd, buf, 5);
+    sys_write(fd, buf, BLOCK_SIZE*2);
+    memset(buf, 0, BLOCK_SIZE*2);
+
+    sys_read(fd, buf, 10);
+    idx = 0;
+    p_buf = (uint8_t*)buf;
+    printk("sys_read:");
+    while (idx < 10)
+    {
+        printk("0x%x ", *p_buf);
+        p_buf++;
+        idx++;
+    }
+    printk("\n");
+
+    // test sys_lseek()
+    printk("\ntest sys_lseek()\n");
+    sys_lseek(fd, 15, SEEK_SET);
+    //sys_lseek(fd, 15, SEEK_CUR);
+    //sys_lseek(fd, -10, SEEK_END);
+    sys_read(fd, buf, 10);
+    idx = 0;
+    p_buf = (uint8_t*)buf;
+    printk("sys_read:");
+    while (idx < 10)
+    {
+        printk("0x%x ", *p_buf);
+        p_buf++;
+        idx++;
+    }
+    printk("\n");
+
+    printk("%s ---\n", __func__);
+}
+
 //=========================
 // test_all
 //=========================
@@ -1185,8 +1267,12 @@ void test_all()
     test_inode();
     //*/
 
-    //* dir.h
+    /* dir.h
     test_dir();
+    //*/
+
+    //* file.h
+    test_file();
     //*/
 }
 
