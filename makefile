@@ -15,9 +15,11 @@ LD 				= x86_64-linux-gnu-ld
 #		Build Flags					#
 #####################################
 KERNEL_ENTRY	= 0xc0001000
+USR_ENTRY		= 0x08048000
 ASFLAGS			= -f elf
 CFLAGS			= -c -m32 -fno-stack-protector -fno-builtin -nostdinc
 LDFLAGS			= -m elf_i386 -Ttext $(KERNEL_ENTRY) -e main -z noexecstack 
+LDFLAGS_USR		= -m elf_i386 -Ttext $(USR_ENTRY) -e init -z noexecstack 
 
 #####################################
 #		Include Files				#
@@ -107,12 +109,14 @@ kernel_obj	+= $(BUILD_DIR)/fs.o
 kernel_obj	+= $(BUILD_DIR)/inode.o
 kernel_obj	+= $(BUILD_DIR)/dir.o
 kernel_obj	+= $(BUILD_DIR)/file.o
+kernel_obj	+= $(BUILD_DIR)/process.o
 kernel_obj	+= $(lib_obj)
 
 #####################################
 #		User Object Files			#
 #####################################
 usr_obj		+= $(BUILD_DIR)/syscall_usr.o
+usr_obj		+= $(BUILD_DIR)/usr_init.o
 usr_obj		+= $(lib_obj)
 
 #####################################
@@ -124,7 +128,8 @@ $(OUT_DIR)/kernel.bin: $(kernel_obj)
 #####################################
 #		User Program				#
 #####################################
-
+$(OUT_DIR)/usr.bin: $(usr_obj)
+	$(LD) $(LDFLAGS_USR) $^ -o $@
 
 #####################################
 #		Command						#
@@ -145,6 +150,7 @@ clean:
 	rm -f $(OUT_DIR)/*
 	@echo ">>>make $@ done."
 
-all: dir $(OUT_DIR)/mbr.bin $(OUT_DIR)/loader.bin $(OUT_DIR)/kernel.bin
+all: dir $(OUT_DIR)/mbr.bin $(OUT_DIR)/loader.bin $(OUT_DIR)/kernel.bin \
+		$(OUT_DIR)/usr.bin
 	@echo ">>>make $@ done."
 

@@ -1247,7 +1247,7 @@ void test_all()
     test_printk();
     //*/
 
-    //*
+    /*
     test_concurrency();
     //*/
 

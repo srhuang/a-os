@@ -87,6 +87,7 @@ struct ide_ch
 //=========================
 // external variable
 //=========================
+extern struct ide_ch g_ide_ch[IDE_CH_NR];
 extern struct list ptn_list;
 
 //=========================

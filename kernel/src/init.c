@@ -8,6 +8,7 @@
 #include "ide.h"
 #include "fs.h"
 #include "file.h"
+#include "process.h"
 
 void kernel_init()
 {
@@ -24,4 +25,7 @@ void kernel_init()
     ide_init();
     fs_init();
     file_init();
+
+    // for user process
+    process_init();
 }
