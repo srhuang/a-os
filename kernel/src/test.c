@@ -1247,7 +1247,7 @@ void test_all()
     test_printk();
     //*/
 
-    /*
+    //*
     test_concurrency();
     //*/
 
@@ -1271,7 +1271,7 @@ void test_all()
     test_dir();
     //*/
 
-    //* file.h
+    /* file.h
     test_file();
     //*/
 }

@@ -63,6 +63,15 @@ static void main_thread_init(void)
         task_fd_idx++;
     }
 
+    // page table
+    g_main_task->pgdir_paddr = K_PGDIR_PADDR;
+
+    // user space virtual address
+    g_main_task->u_v_pool = &u_v_pool;
+
+    // for the size less than page size
+    g_main_task->mblock = k_mem_block;
+
     // start for scheduling
     g_main_task->status = TASK_RUNNING;
     g_main_task->time_slice = SCHED_RR_TIME_SLICE;
@@ -131,6 +140,15 @@ struct task_struct* kthread_create(threadfn fn, void* fn_arg, char* name)
         task->open_fd[task_fd_idx] = -1;
         task_fd_idx++;
     }
+
+    // page table
+    task->pgdir_paddr = K_PGDIR_PADDR;
+
+    // user space virtual address
+    task->u_v_pool = &u_v_pool;
+
+    // for the size less than page size
+    task->mblock = k_mem_block;
 
     return task;
 }

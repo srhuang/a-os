@@ -4,11 +4,12 @@
 #include "print.h"
 #include "math.h"
 #include "list.h"
+#include "assert.h"
 
 //=========================
 // debugging
 //=========================
-#define DEBUG (0)
+#define DEBUG (1)
 #define TRACE_STR(x) do {if(DEBUG) put_str(x);} while(0)
 #define TRACE_INT(x) do {if(DEBUG) put_int(x);} while(0)
 
@@ -34,8 +35,8 @@ struct mem_block {
 // for physical memory management
 struct p_pool k_p_pool, u_p_pool;
 
-// for kernel virtual address
-struct v_pool k_v_pool;
+// for virtual memory management
+struct v_pool k_v_pool, u_v_pool;
 
 // for memory block management
 struct mem_block_desc   k_mem_block[MEM_BLOCK_CNT];
@@ -79,7 +80,7 @@ static void* vaddr_acquire(struct v_pool* vp, void* vaddr, int pg_cnt)
     if (NULL == vaddr) {
         btmp_idx  = bitmap_acquire(&vp->vaddr_bitmap, pg_cnt);
 
-        //* for debugging
+        /* for debugging
         TRACE_STR("vaddr acquire:btmp_idx=0x");
         TRACE_INT(btmp_idx);
         TRACE_STR(", cnt=0x");
@@ -92,7 +93,14 @@ static void* vaddr_acquire(struct v_pool* vp, void* vaddr, int pg_cnt)
         }
         vaddr_ret = (void*)vp->vaddr_start + (btmp_idx * PG_SIZE);
     } else {
+        assert(vaddr_val >= vp->vaddr_start);
         btmp_idx = (vaddr_val - vp->vaddr_start) / PG_SIZE;
+
+        // check boundary of vaddr
+        uint32_t byte_idx = (btmp_idx + pg_cnt - 1) / 8;
+        if (byte_idx >= vp->vaddr_bitmap.len) {
+            return NULL;
+        }
 
         // check and set each virtual address bitmap
         int cnt = 0;
@@ -115,7 +123,7 @@ static void vaddr_release(struct v_pool* vp, void* vaddr, int pg_cnt)
 
     btmp_idx = (vaddr_val - vp->vaddr_start) / PG_SIZE;
 
-    //* for debugging
+    /* for debugging
     TRACE_STR("vaddr release:btmp_idx=0x");
     TRACE_INT(btmp_idx);
     TRACE_STR(", cnt=0x");
@@ -134,7 +142,7 @@ static void* palloc(struct p_pool* pp)
 
     btmp_idx = bitmap_acquire(&pp->paddr_bitmap, 1);
 
-    //* for debugging
+    /* for debugging
     TRACE_STR("palloc:btmp_idx=0x");
     TRACE_INT(btmp_idx);
     TRACE_STR("\n");
@@ -156,7 +164,7 @@ static void pfree(struct p_pool* pp, void* paddr)
 
     btmp_idx = (paddr_val - pp->paddr_start) / PG_SIZE;
 
-    //* for debugging
+    /* for debugging
     TRACE_STR("pfree:btmp_idx=0x");
     TRACE_INT(btmp_idx);
     TRACE_STR("\n");
@@ -333,29 +341,53 @@ static void pool_init(uint32_t mem_total_size)
     TRACE_INT((uint32_t)u_p_pool.paddr_bitmap.bits);
     TRACE_STR("\n");
 
-    // phusical pool lock
+    // physical pool lock
     mutex_init(&k_p_pool.mlock);
     mutex_init(&u_p_pool.mlock);
 
     // virtual pool
     k_v_pool.vaddr_start = K_HEAP_START;
+    u_v_pool.vaddr_start = U_HEAP_START;
 
     TRACE_STR("kernel virtual pool start at ");
     TRACE_INT(k_v_pool.vaddr_start);
     TRACE_STR("\n");
+    TRACE_STR("user virtual pool start at ");
+    TRACE_INT(u_v_pool.vaddr_start);
+    TRACE_STR("\n");
 
     // virtual pool bitmap
+    kernel_free_pages = (0xFFFFFFFF - K_HEAP_START + 1) / PG_SIZE;
+    user_free_pages = (0xC0000000 - U_HEAP_START) / PG_SIZE;
+    kbm_length = kernel_free_pages / 8;
+    ubm_length = user_free_pages / 8;
+
     btmp = &k_v_pool.vaddr_bitmap;
-    btmp_addr = (void*)K_VADDR_BITMAP_BASE;
-    bitmap_init(btmp, btmp_addr, 0x8000);
+    btmp_addr = (void*)VADDR_BITMAP_BASE;
+    bitmap_init(btmp, btmp_addr, kbm_length);
     bitmap_reset(btmp);
+    TRACE_STR("kernel virtual bitmap length: ");
+    TRACE_INT(kbm_length);
+    TRACE_STR("\n");
+
+    btmp = &u_v_pool.vaddr_bitmap;
+    btmp_addr = (void*)VADDR_BITMAP_BASE + kbm_length;
+    bitmap_init(btmp, btmp_addr, ubm_length);
+    bitmap_reset(btmp);
+    TRACE_STR("user virtual bitmap length: ");
+    TRACE_INT(ubm_length);
+    TRACE_STR("\n");
 
     TRACE_STR("kernel virtual pool bitmap: ");
     TRACE_INT((uint32_t)k_v_pool.vaddr_bitmap.bits);
     TRACE_STR("\n");
+    TRACE_STR("user virtual pool bitmap: ");
+    TRACE_INT((uint32_t)u_v_pool.vaddr_bitmap.bits);
+    TRACE_STR("\n");
 
     // virtual pool lock
     mutex_init(&k_v_pool.mlock);
+    mutex_init(&u_v_pool.mlock);
 }
 
 static struct mem_block* arena2block(struct arena* a, uint32_t idx)
@@ -435,7 +467,9 @@ void* page_malloc(enum pool_flags pf, void* vaddr, int pg_cnt)
     if (PF_KERNEL == pf) {
         vaddr_start = page_acquire(&k_v_pool, &k_p_pool, vaddr, pg_cnt);
     } else if (PF_USER == pf) {
-        // TODO: user process
+        struct task_struct* task = kthread_current();
+        assert(task->u_v_pool != NULL);
+        vaddr_start = page_acquire(task->u_v_pool, &u_p_pool, vaddr, pg_cnt);
     } else {
         // invalid pool flag
         return NULL;
@@ -450,7 +484,9 @@ void page_free(enum pool_flags pf, void* vaddr, int pg_cnt)
     if (PF_KERNEL == pf) {
         page_release(&k_v_pool, &k_p_pool, vaddr, pg_cnt);
     } else if (PF_USER == pf) {
-        // TODO: user process
+        struct task_struct* task = kthread_current();
+        assert(task->u_v_pool != NULL);
+        page_release(task->u_v_pool, &u_p_pool, vaddr, pg_cnt);
     } else {
         // invalid pool flag
         return;
@@ -466,10 +502,18 @@ void* sys_malloc(uint32_t size)
     struct p_pool*          pp;
     void*                   vaddr = NULL;
 
-    // TODO: determine whether it is in kernel space or user space
-    mblock = k_mem_block;
-    vp = &k_v_pool;
-    pp = &k_p_pool;
+    // determine whether it is kernel task or user task
+    struct task_struct* task = kthread_current();
+    if (K_PGDIR_PADDR == task->pgdir_paddr) {
+        // kernel task
+        vp = &k_v_pool;
+        pp = &k_p_pool;
+    } else {
+        // user task
+        vp = task->u_v_pool;
+        pp = &u_p_pool;
+    }
+    mblock = task->mblock;
 
     if (size > 1024) {
         uint32_t page_cnt = DIV_ROUND_UP(size + sizeof(struct arena), PG_SIZE);
@@ -484,7 +528,7 @@ void* sys_malloc(uint32_t size)
         a->is_page_cnt = true;
         vaddr = (void*)(a+1);
 
-        //* for debugging
+        /* for debugging
         uint32_t* p_arena = (uint32_t*)a;
         TRACE_STR("sys_malloc:arena=0x");
         TRACE_INT((uint32_t)p_arena);
@@ -517,7 +561,7 @@ void sys_free(void* vaddr)
     struct p_pool*  pp;
     struct arena*   a = block2arena((struct mem_block*)vaddr);
 
-    //* for debugging
+    /* for debugging
     uint32_t* p_arena = (uint32_t*)a;
     TRACE_STR("sys_free:arena=0x");
     TRACE_INT((uint32_t)p_arena);
@@ -526,9 +570,17 @@ void sys_free(void* vaddr)
     TRACE_STR("\n");
     //*/
 
-    // TODO: determine whether it is in kernel space or user space
-    vp = &k_v_pool;
-    pp = &k_p_pool;
+    // determine whether it is kernel task or user task
+    struct task_struct* task = kthread_current();
+    if (K_PGDIR_PADDR == task->pgdir_paddr) {
+        // kernel task
+        vp = &k_v_pool;
+        pp = &k_p_pool;
+    } else {
+        // user task
+        vp = task->u_v_pool;
+        pp = &u_p_pool;
+    }
 
     if (a->is_page_cnt) {
         page_release(vp, pp, a, a->cnt);

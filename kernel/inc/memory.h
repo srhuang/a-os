@@ -24,20 +24,24 @@ enum pool_flags {
 // the address of memory size
 #define MEM_SIZE_ADDR       (0x900)
 
-// each 4KB can maintain 128MB, 128KB can maintain 4GB.
-#define PADDR_BITMAP_BASE   (0xC0076000)
+// each 4KB can maintain 128MB, 128KB(0x20000) can maintain 4GB.
+#define PADDR_BITMAP_BASE   (0xC005E000)
 
-// The size of the kernel virtual memory is 1 GB.
-#define K_VADDR_BITMAP_BASE (0xC0096000)
+// each 4KB can maintain 128MB, 128KB(0x20000) can maintain 4GB.
+#define VADDR_BITMAP_BASE   (0xC007E000)
 
-// 1MB for kernel/hardware mmio
-#define K_HEAP_START        (0xC0100000)
-
-#define PDE_IDX(addr) ((addr & 0xFFC00000) >> 22)
-#define PTE_IDX(addr) ((addr & 0x003FF000) >> 12)
+#define PDE_IDX(addr)       ((addr & 0xFFC00000) >> 22)
+#define PTE_IDX(addr)       ((addr & 0x003FF000) >> 12)
 
 // for 1024/512/256/128/64/32/16 byte block types
-#define MEM_BLOCK_CNT   (7)
+#define MEM_BLOCK_CNT       (7)
+
+// kernel page table
+#define K_PGDIR_PADDR       (0x00100000)
+
+// kernel thread virtual address
+#define K_HEAP_START        (0xC0100000)
+#define U_HEAP_START        (0x00400000)
 
 //=========================
 // struct
@@ -63,6 +67,12 @@ struct mem_block_desc {
     struct list     free_list;
     struct mutex    mlock;
 };
+
+//=========================
+// external variable
+//=========================
+extern struct v_pool u_v_pool;
+extern struct mem_block_desc k_mem_block[MEM_BLOCK_CNT];
 
 //=========================
 // function

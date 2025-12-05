@@ -37,6 +37,15 @@ struct task_struct
     // file descriptor
     int32_t     open_fd[MAX_FD_PER_TASK];
 
+    // page table
+    uint32_t                pgdir_paddr;
+
+    // user space virtual address
+    struct v_pool*          u_v_pool;
+
+    // for the size less than page size
+    struct mem_block_desc*  mblock;
+
     // MUST be the last member
     uint32_t    stack_magic;
 };
