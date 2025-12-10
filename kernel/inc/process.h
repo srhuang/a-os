@@ -1,5 +1,6 @@
 #ifndef __KERNEL_INC_PROCESS_H
 #define __KERNEL_INC_PROCESS_H
+#include "thread.h"
 
 //=========================
 // define
@@ -16,9 +17,12 @@
 // external variable
 //=========================
 
+
 //=========================
 // function
 //=========================
+void tss_init(void);
 void process_init(void);
+void process_switch(struct task_struct* task);
 
 #endif

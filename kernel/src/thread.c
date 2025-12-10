@@ -65,6 +65,7 @@ static void main_thread_init(void)
 
     // page table
     g_main_task->pgdir_paddr = K_PGDIR_PADDR;
+    g_main_task->pgdir_vaddr = 0;
 
     // user space virtual address
     g_main_task->u_v_pool = &u_v_pool;
@@ -143,6 +144,7 @@ struct task_struct* kthread_create(threadfn fn, void* fn_arg, char* name)
 
     // page table
     task->pgdir_paddr = K_PGDIR_PADDR;
+    task->pgdir_vaddr = 0;
 
     // user space virtual address
     task->u_v_pool = &u_v_pool;

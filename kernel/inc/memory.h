@@ -43,6 +43,10 @@ enum pool_flags {
 #define K_HEAP_START        (0xC0100000)
 #define U_HEAP_START        (0x00400000)
 
+// user process virtual address
+#define U_VADDR_START       (0x00010000)
+#define U_STACK_START       (0xC0000000 - 0x1000)
+
 //=========================
 // struct
 //=========================

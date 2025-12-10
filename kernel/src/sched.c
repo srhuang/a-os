@@ -1,6 +1,8 @@
 #include "sched.h"
 #include "interrupt.h"
 #include "thread.h"
+#include "process.h"
+#include "memory.h"
 
 //=========================
 // debugging
@@ -51,6 +53,15 @@ void schedule(void)
     TRACE_STR("next task: ");
     TRACE_STR(next_task->name);
     TRACE_STR("\n");
+
+    // switch page table
+    uint32_t page_table = next_task->pgdir_paddr;
+    asm volatile ("movl %0, %%cr3" : : "r" (page_table) : "memory");
+
+    // update tss esp0 (user process only)
+    if (K_PGDIR_PADDR != page_table) {
+        process_switch(next_task);
+    }
 
     switch_to(cur_task, next_task);
 }

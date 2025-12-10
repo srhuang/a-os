@@ -39,6 +39,7 @@ struct task_struct
 
     // page table
     uint32_t                pgdir_paddr;
+    uint32_t                pgdir_vaddr;
 
     // user space virtual address
     struct v_pool*          u_v_pool;
