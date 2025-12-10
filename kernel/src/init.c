@@ -27,5 +27,6 @@ void kernel_init()
     file_init();
 
     // for user process
+    tss_init();
     process_init();
 }
