@@ -180,6 +180,16 @@ static void page_table_add(void* vaddr, void* paddr)
         memset((void*)((int)pte & 0xfffff000), 0, PG_SIZE);
     }
     *pte = (paddr_val | PG_US_U | PG_RW_W | PG_P_1);
+
+    // update page table
+    uint32_t cr3;
+    asm volatile (
+        "mov %%cr3, %0;" // read from CR3
+        "mov %0, %%cr3;" // write back to CR3
+        : "=r"(cr3)
+        :
+        : "memory"
+   );
 }
 
 static void page_table_remove(void* vaddr)
@@ -206,7 +216,7 @@ static void* page_acquire(struct v_pool* vp, struct p_pool* pp,\
 
     // acquire physical address
     int n = 0;
-    void* vaddr_idx = vaddr_ret;
+    uint8_t* vaddr_idx = vaddr_ret;
     while (n < pg_cnt)
     {
         mutex_lock(&pp->mlock);
@@ -236,7 +246,7 @@ static void page_release(struct v_pool* vp, struct p_pool* pp,\
     void* paddr = NULL;
 
     int n = 0;
-    void* vaddr_idx = vaddr_start;
+    uint8_t* vaddr_idx = vaddr_start;
     while (n < pg_cnt)
     {
         // free physical memory

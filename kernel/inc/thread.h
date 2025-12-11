@@ -23,7 +23,7 @@ enum task_status {
 struct task_struct
 {
     // MUST be the first member
-    void*       kstack;
+    uint32_t    kstack;
 
     // scheduler related
     enum        task_status status;

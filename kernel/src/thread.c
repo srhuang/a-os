@@ -49,7 +49,7 @@ static void main_thread_init(void)
     // init task_struct
     g_main_task = kthread_current();
     memset(g_main_task, 0, sizeof(struct task_struct));
-    g_main_task->kstack = (void*)esp;
+    g_main_task->kstack = esp;
     strcpy(g_main_task->name, "main");
     g_main_task->stack_magic = 0x19880802;
 
@@ -64,7 +64,9 @@ static void main_thread_init(void)
     }
 
     // start for scheduling
-    kthread_run(g_main_task);
+    g_main_task->status = TASK_RUNNING;
+    g_main_task->time_slice = SCHED_RR_TIME_SLICE;
+    list_append(&task_all_list, &g_main_task->task_all_tag);
 }
 
 static void idle_thread(void* arg)
@@ -105,7 +107,7 @@ struct task_struct* kthread_create(threadfn fn, void* fn_arg, char* name)
 
     // init task_struct
     memset(task, 0, sizeof(struct task_struct));
-    task->kstack = (void*)((uint32_t)task + PG_SIZE);
+    task->kstack = (uint32_t)task + PG_SIZE;
     strcpy(task->name, name);
     task->stack_magic = 0x19880802;
 
@@ -161,7 +163,9 @@ void kthread_exit(void)
 
     // for scheduler
     task->status = TASK_DIED;
-    list_remove(&task->task_tag);
+    if (list_find(&task_ready_list, &task->task_tag)) {
+        list_remove(&task->task_tag);
+    }
     list_remove(&task->task_all_tag);
 
     // free page for PCB
