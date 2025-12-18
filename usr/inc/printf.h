@@ -1,9 +1,11 @@
-#ifndef __KERNEL_INC_SYSCALL_SYS_H
-#define __KERNEL_INC_SYSCALL_SYS_H
+#ifndef __USR_INC_PRINTF_H
+#define __USR_INC_PRINTF_H
+#include "stdint.h"
 
 //=========================
 // define
 //=========================
+#define PRINTF_BUF_SIZE         (1024)
 
 //=========================
 // struct
@@ -16,6 +18,6 @@
 //=========================
 // function
 //=========================
-void syscall_init(void);
+int32_t printf(const char* format, ...);
 
 #endif

@@ -116,6 +116,7 @@ kernel_obj	+= $(lib_obj)
 #		User Object Files			#
 #####################################
 usr_obj		+= $(BUILD_DIR)/syscall_usr.o
+usr_obj		+= $(BUILD_DIR)/printf.o
 usr_obj		+= $(BUILD_DIR)/usr_init.o
 usr_obj		+= $(lib_obj)
 

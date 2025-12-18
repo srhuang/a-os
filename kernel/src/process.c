@@ -12,7 +12,7 @@
 //=========================
 // debugging
 //=========================
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
     #define pr_debug(fmt, ...) printk(fmt, ##__VA_ARGS__)
@@ -346,7 +346,7 @@ static void process_start(void* entry)
 //=========================
 void tss_init()
 {
-    printk("%s +++\n", __func__);
+    pr_debug("%s +++\n", __func__);
 
     // tss GDT
     uint32_t tss_size = sizeof(usr_tss);
@@ -373,12 +373,12 @@ void tss_init()
     asm volatile ("lgdt %0" : : "m" (gdt_reg));
     asm volatile ("ltr %w0" : : "r" (SELECTOR_TSS));
 
-    printk("%s ---\n", __func__);
+    pr_debug("%s ---\n", __func__);
 }
 
 void process_init()
 {
-    printk("%s +++\n", __func__);
+    pr_debug("%s +++\n", __func__);
 
     // user init
     process_fs(USR_START_SECTOR, USR_INIT_PATH);
@@ -396,7 +396,7 @@ void process_init()
     // run task
     kthread_run(task);
 
-    printk("%s ---\n", __func__);
+    pr_debug("%s ---\n", __func__);
 }
 
 void process_switch(struct task_struct* task)
