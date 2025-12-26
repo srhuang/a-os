@@ -7,6 +7,7 @@
 #include "interrupt.h"
 #include "sched.h"
 #include "stdio.h"
+#include "file.h"
 
 //=========================
 // debugging
@@ -18,7 +19,11 @@
 //=========================
 // internal struct
 //=========================
-
+struct pid_pool {
+    uint32_t        pid_start;
+    struct bitmap   pid_bitmap;
+    struct mutex    mlock;
+};
 
 //=========================
 // global variable
@@ -27,6 +32,8 @@ struct list task_ready_list;
 struct list task_all_list;
 struct task_struct* g_main_task;
 struct task_struct* g_idle_task;
+static struct pid_pool g_pid_pool;
+static uint8_t pid_bitmap[PID_BITMAP_LEN] = {0};
 
 //=========================
 // internal functions
@@ -76,6 +83,10 @@ static void main_thread_init(void)
     // cwd
     g_main_task->cwd_inode = 0;
 
+    // process management
+    g_main_task->pid = pid_acquire();
+    g_main_task->ppid = -1;
+
     // start for scheduling
     g_main_task->status = TASK_RUNNING;
     g_main_task->time_slice = SCHED_RR_TIME_SLICE;
@@ -96,6 +107,14 @@ static void idle_thread(void* arg)
         kthread_block(TASK_BLOCKED);
         asm volatile ("sti; hlt" : : : "memory");
     }
+}
+
+static void pid_init()
+{
+    g_pid_pool.pid_start = 1;
+    bitmap_init(&g_pid_pool.pid_bitmap, pid_bitmap, PID_BITMAP_LEN);
+    bitmap_reset(&g_pid_pool.pid_bitmap);
+    mutex_init(&g_pid_pool.mlock);
 }
 
 //=========================
@@ -158,6 +177,10 @@ struct task_struct* kthread_create(threadfn fn, void* fn_arg, char* name)
     // cwd
     task->cwd_inode = 0;
 
+    // process management
+    task->pid = pid_acquire();
+    task->ppid = -1;
+
     return task;
 }
 
@@ -187,14 +210,26 @@ void kthread_exit(void)
 
     struct task_struct* task = kthread_current();
 
-    // for scheduler
+    // close all file descriptor
+    uint32_t fd;
+    for (fd = 3; fd < MAX_FD_PER_TASK; fd++)
+    {
+        if (-1 != task->open_fd[fd]) {
+            sys_close(fd);
+        }
+    }
+
+    // release pid
+    pid_release(task->pid);
+
+    // remove from scheduler
     task->status = TASK_DIED;
     if (list_find(&task_ready_list, &task->task_tag)) {
         list_remove(&task->task_tag);
     }
     list_remove(&task->task_all_tag);
 
-    // free page for PCB
+    // release struct task
     if (task != g_main_task)
     {
         page_free(PF_KERNEL, task, 1);
@@ -274,9 +309,84 @@ void kthread_init(void)
     list_init(&task_ready_list);
     list_init(&task_all_list);
 
+    pid_init();
+
     g_idle_task = kthread_create(idle_thread, NULL, "idle");
     kthread_run(g_idle_task);
 
     main_thread_init();
 }
 
+pid_t pid_acquire(void)
+{
+    mutex_lock(&g_pid_pool.mlock);
+    int32_t btmp_idx = bitmap_acquire(&g_pid_pool.pid_bitmap, 1);
+    mutex_unlock(&g_pid_pool.mlock);
+
+    if (-1 == btmp_idx) {
+        return -1;
+    }
+    return (g_pid_pool.pid_start + btmp_idx);
+}
+
+void pid_release(pid_t pid)
+{
+    int32_t btmp_idx = pid - g_pid_pool.pid_start;
+    if (btmp_idx < 0) {
+        return;
+    }
+
+    mutex_lock(&g_pid_pool.mlock);
+    bitmap_release(&g_pid_pool.pid_bitmap, btmp_idx, 1);
+    mutex_unlock(&g_pid_pool.mlock);
+}
+
+#include "printk.h"
+void sys_ps(void)
+{
+    printk("PID\t\tPPID\tSTAT\t\tName\n");
+
+    struct task_struct* task;
+    struct list_elem* cur_elem = task_all_list.head.next;
+    while (cur_elem != &task_all_list.tail)
+    {
+        task = elem2entry(struct task_struct, task_all_tag, cur_elem);
+
+        printk("%d\t\t", task->pid);
+        printk("%d\t\t", task->ppid);
+        // print task status
+        switch(task->status)
+        {
+            case TASK_RUNNING:
+                printk("RUNNING\t\t");
+                break;
+            case TASK_READY:
+                printk("READY\t\t");
+                break;
+            case TASK_BLOCKED:
+                printk("BLOCKED\t\t");
+                break;
+            case TASK_WAITING:
+                printk("WAITING\t\t");
+                break;
+            case TASK_HANGING:
+                printk("HANGING\t\t");
+                break;
+            case TASK_DIED:
+                printk("DIED\t\t");
+                break;
+            default:
+                printk("UNKNOWN\t\t");
+        }
+        printk("%s  ", task->name);
+        printk("\n");
+
+        // next element
+        cur_elem = cur_elem->next;
+    } // while
+}
+
+pid_t sys_getpid()
+{
+    return kthread_current()->pid;
+}

@@ -29,6 +29,9 @@ void* syscall_func[SYSCALL_MAX];
 void syscall_init(void)
 {
     TRACE_STR("syscall_init()\n");
+#include "thread.h"
+    syscall_func[SYS_PS]        = sys_ps;
+    syscall_func[SYS_GETPID]    = sys_getpid;
 #include "file.h"
     syscall_func[SYS_WRITE]     = sys_write;
 }

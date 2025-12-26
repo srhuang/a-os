@@ -5,6 +5,10 @@
 //=========================
 
 enum SyscallNR {
+    // thread.h
+    SYS_PS,
+    SYS_GETPID,
+
     // file.h
     SYS_WRITE,
 

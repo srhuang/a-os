@@ -49,6 +49,18 @@ uint32_t vsprintf(char* str, const char* format, va_list ap)
 
     while(c) {
 
+        // tab
+        if (c == '\t') {
+            uint8_t space_cnt = 4 - ((out - str) % 4);
+            uint8_t idx;
+            for (idx = 0; idx < space_cnt; idx++)
+            {
+                *(out++) = ' ';
+            }
+            c = *(++format);
+            continue;
+        }
+
         // plain text
         if (c != '%') {
             *(out++) = c;

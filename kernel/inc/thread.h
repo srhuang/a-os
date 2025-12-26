@@ -7,6 +7,7 @@
 //=========================
 #define MAX_FD_PER_TASK     (32)
 typedef void (*threadfn) (void*);
+typedef int16_t pid_t;
 
 enum task_status {
     TASK_RUNNING,
@@ -16,6 +17,8 @@ enum task_status {
     TASK_HANGING,
     TASK_DIED
 };
+
+#define PID_BITMAP_LEN      (128)
 
 //=========================
 // struct
@@ -49,6 +52,11 @@ struct task_struct
 
     // current working directory (CWD)
     uint32_t                cwd_inode;
+
+    // process management
+    pid_t       pid;
+    pid_t       ppid;
+    int32_t     exit_code;
 
     // MUST be the last member
     uint32_t    stack_magic;
@@ -87,6 +95,10 @@ void                    kthread_block(enum task_status stat);
 void                    kthread_unblock(struct task_struct* task);
 void                    kthread_yield(void);
 void                    kthread_init(void);
+pid_t                   pid_acquire(void);
+void                    pid_release(pid_t pid);
+void                    sys_ps(void);
+pid_t                   sys_getpid(void);
 
 #endif
 

@@ -52,6 +52,16 @@
 //=========================
 // external functions
 //=========================
+// thread.h
+void ps(void)
+{
+    _syscall0(SYS_PS);
+}
+int16_t getpid(void)
+{
+    return _syscall0(SYS_GETPID);
+}
+
 // file.h
 int32_t write(uint32_t fd, uint8_t* buf, uint32_t cnt)
 {
