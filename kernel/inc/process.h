@@ -24,5 +24,6 @@
 void tss_init(void);
 void process_init(void);
 void process_switch(struct task_struct* task);
+pid_t sys_fork(void);
 
 #endif

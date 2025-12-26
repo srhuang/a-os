@@ -8,11 +8,12 @@
 #include "stddef.h"
 #include "string.h"
 #include "kernel.h"
+#include "fs.h"
 
 //=========================
 // debugging
 //=========================
-//#define DEBUG
+#define DEBUG
 
 #ifdef DEBUG
     #define pr_debug(fmt, ...) printk(fmt, ##__VA_ARGS__)
@@ -116,6 +117,24 @@ struct kstack_ret {
     uint32_t ss;
 };
 
+struct kstack_syscall {
+    uint32_t ret_addr;
+    uint32_t ebx;
+    uint32_t ecx;
+    uint32_t edx;
+    uint32_t pushad[8];
+    uint32_t gs;
+    uint32_t fs;
+    uint32_t es;
+    uint32_t ds;
+    uint32_t error_code;
+    uint32_t eip;
+    uint32_t cs;
+    uint32_t eflags;
+    uint32_t esp;
+    uint32_t ss;
+};
+
 //=========================
 // global variable
 //=========================
@@ -188,6 +207,51 @@ static void vaddr_create(struct task_struct* task)
     //pr_debug("%s:mblock=0x%x\n", __func__, mblock);
     mem_block_init(mblock);
     task->mblock = mblock;
+}
+
+static void vaddr_copy(struct task_struct* child, struct task_struct* parent)
+{
+    uint8_t* btmp_addr = parent->u_v_pool->vaddr_bitmap.bits;
+    uint32_t btmp_len = parent->u_v_pool->vaddr_bitmap.len;
+    uint32_t vaddr_start = parent->u_v_pool->vaddr_start;
+
+    uint32_t idx_byte;
+    uint32_t idx_bit;
+    uint32_t vaddr;
+
+    uint8_t* buf = page_malloc(PF_KERNEL, NULL, 1);
+    uint32_t page_table;
+    // switch to child vaddr_btmp
+    struct v_pool* parent_vp = parent->u_v_pool;
+    parent->u_v_pool = child->u_v_pool;
+    // search all parent user space virtual address
+    for (idx_byte = 0; idx_byte < btmp_len; idx_byte++)
+    {
+        if (0 == btmp_addr[idx_byte]) {
+            continue;
+        }
+        for (idx_bit = 0; idx_bit < 8; idx_bit++)
+        {
+            if (btmp_addr[idx_byte] & (1 << idx_bit)) {
+                vaddr = vaddr_start + ((idx_byte * 8 + idx_bit) * PG_SIZE);
+                memcpy(buf, (void*)vaddr, PG_SIZE);
+                // switch to child page table
+                page_table = child->pgdir_paddr;
+                asm volatile ("movl %0, %%cr3" : : "r" (page_table) : "memory");
+                // copy from kernel buf
+                vaddr = (uint32_t)page_malloc(PF_USER, (void*)vaddr, 1);
+                memcpy((void*)vaddr, buf, PG_SIZE);
+                // switch to parent page table
+                page_table = parent->pgdir_paddr;
+                asm volatile ("movl %0, %%cr3" : : "r" (page_table) : "memory");
+            } // if
+        } //for (idx_bit...
+    } // for (idx_byte...
+    // switch to parent vaddr_btmp
+    parent->u_v_pool = parent_vp;
+
+    // free buf
+    page_free(PF_KERNEL, buf, 1);
 }
 
 static void page_create(struct task_struct* task, uint32_t start_idx)
@@ -341,6 +405,68 @@ static void process_start(void* entry)
     asm volatile ("retf;");
 }
 
+static void process_copy(struct task_struct* child, struct task_struct* parent)
+{
+    pr_debug("%s +++\n", __func__);
+
+    // assign parent pid
+    child->ppid = parent->pid;
+
+    // file descriptor
+    int32_t fd;
+    for (fd = 3; fd < MAX_FD_PER_TASK; fd++)
+    {
+        uint32_t fd_idx = parent->open_fd[fd];
+        if (-1 != fd_idx) {
+            child->open_fd[fd] = fd_idx;
+            fd_table[fd_idx].inode->open_cnt++;
+        }
+    }
+
+    // The following are allocated in kernel space.
+    // keep the kstack_switch on the top of stack
+    uint32_t sp = child->kstack;
+    child->kstack -= sizeof(struct kstack_syscall);
+    memcpy((void*)child->kstack, (void*)sp, sizeof(struct kstack_switch));
+    // copy the kernel stack for syscall
+    uint32_t stack_len = sizeof(struct kstack_syscall);
+    uint32_t parent_stack  = \
+        (uint32_t)parent + PG_SIZE - stack_len;
+    uint32_t child_stack = child->kstack + sizeof(struct kstack_switch);
+    memcpy((void*)child_stack, (void*)parent_stack, stack_len);
+    pr_debug("stack_len=%d\n", stack_len);
+
+    // user space virtual address
+    vaddr_create(child);
+
+    // page table
+    page_create(child, 768);
+
+    // The following are allocated in user space.
+    // copy the user space
+    vaddr_copy(child, parent);
+
+    pr_debug("%s ---\n", __func__);
+}
+
+static void process_fork_start(void* arg)
+{
+    pr_debug("%s +++\n", __func__);
+
+    struct task_struct* task = kthread_current();
+    task->kstack = (uint32_t)task + PG_SIZE - sizeof(struct kstack_syscall);
+    uint32_t sp = task->kstack;
+    pr_debug("%s:sp=0x%x\n", __func__, sp);
+
+    // system call return value stored in EAX
+    uint32_t eax = 0;
+    asm volatile ("movl %0, %%eax;" : : "g" (eax));
+
+    // return to syscall_entry
+    asm volatile ("movl %0, %%esp;" : : "g" (sp));
+    asm volatile ("ret;");
+}
+
 //=========================
 // external functions
 //=========================
@@ -404,4 +530,23 @@ void process_switch(struct task_struct* task)
     // update tss esp for user process
     usr_tss.esp0 = (uint32_t)task + PG_SIZE;
 }
+
+pid_t sys_fork(void)
+{
+    pr_debug("%s +++\n", __func__);
+    struct task_struct* parent = kthread_current();
+
+    // create task
+    struct task_struct* child = \
+        kthread_create(process_fork_start, NULL, "fork");
+    pr_debug("child=0x%x\n", child);
+    process_copy(child, parent);
+
+    // run task
+    kthread_run(child);
+
+    pr_debug("%s ---\n", __func__);
+    return child->pid;
+}
+
 

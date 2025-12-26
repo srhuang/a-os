@@ -9,6 +9,9 @@ enum SyscallNR {
     SYS_PS,
     SYS_GETPID,
 
+    // process.h
+    SYS_FORK,
+
     // file.h
     SYS_WRITE,
 

@@ -62,9 +62,14 @@ int16_t getpid(void)
     return _syscall0(SYS_GETPID);
 }
 
+// process.h
+int16_t fork(void)
+{
+    return _syscall0(SYS_FORK);
+}
+
 // file.h
 int32_t write(uint32_t fd, uint8_t* buf, uint32_t cnt)
 {
     return _syscall3(SYS_WRITE, fd, buf, cnt);
 }
-

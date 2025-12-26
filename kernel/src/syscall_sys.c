@@ -32,7 +32,10 @@ void syscall_init(void)
 #include "thread.h"
     syscall_func[SYS_PS]        = sys_ps;
     syscall_func[SYS_GETPID]    = sys_getpid;
+#include "process.h"
+    syscall_func[SYS_FORK]      = sys_fork;
 #include "file.h"
     syscall_func[SYS_WRITE]     = sys_write;
+
 }
 

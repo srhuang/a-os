@@ -21,6 +21,9 @@
 void    ps(void);
 int16_t getpid(void);
 
+// process.h
+int16_t fork(void);
+
 // file.h
 int32_t write(uint32_t fd, uint8_t* buf, uint32_t cnt);
 
