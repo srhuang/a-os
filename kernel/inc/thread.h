@@ -6,6 +6,7 @@
 // define
 //=========================
 #define MAX_FD_PER_TASK     (32)
+#define TASK_NAME_LEN       (16)
 typedef void (*threadfn) (void*);
 typedef int16_t pid_t;
 
@@ -35,7 +36,7 @@ struct task_struct
     struct      list_elem task_all_tag;
 
     // task name
-    char        name[16];
+    char        name[TASK_NAME_LEN];
 
     // file descriptor
     int32_t     open_fd[MAX_FD_PER_TASK];

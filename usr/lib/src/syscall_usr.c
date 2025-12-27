@@ -67,6 +67,10 @@ int16_t fork(void)
 {
     return _syscall0(SYS_FORK);
 }
+int32_t exec(const char* path, char* argv[])
+{
+    return _syscall2(SYS_EXEC, path, argv);
+}
 
 // file.h
 int32_t write(uint32_t fd, uint8_t* buf, uint32_t cnt)

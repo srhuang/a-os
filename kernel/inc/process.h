@@ -8,6 +8,8 @@
 #define USR_START_SECTOR    (205)
 #define USR_SECTOR_COUNT    (100)
 #define USR_INIT_PATH       "/sdb_1/init"
+#define PROG_START_SECTOR   (305)
+#define PROG_SECTOR_COUNT   (100)
 
 //=========================
 // struct
@@ -25,5 +27,6 @@ void tss_init(void);
 void process_init(void);
 void process_switch(struct task_struct* task);
 pid_t sys_fork(void);
+int32_t sys_exec(const char* path, char* argv[]);
 
 #endif

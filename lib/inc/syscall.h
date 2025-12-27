@@ -11,6 +11,7 @@ enum SyscallNR {
 
     // process.h
     SYS_FORK,
+    SYS_EXEC,
 
     // file.h
     SYS_WRITE,

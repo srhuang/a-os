@@ -9,6 +9,8 @@
 #include "string.h"
 #include "kernel.h"
 #include "fs.h"
+#include "dir.h"
+#include "interrupt.h"
 
 //=========================
 // debugging
@@ -148,7 +150,7 @@ static struct gdt_desc make_gdt_table( \
 {
     struct gdt_desc desc;
 
-    pr_debug("base=0x%x, limit=0x%x, attr=0x%x\n", base, limit, attr);
+    //pr_debug("base=0x%x, limit=0x%x, attr=0x%x\n", base, limit, attr);
 
     desc.limit_low = limit & 0x0000FFFF;
     desc.base_low = base & 0x0000FFFF;
@@ -163,7 +165,7 @@ static struct gdt_desc make_gdt_table( \
 static void segment_load(int32_t fd, \
     uint32_t offset, uint32_t size, uint32_t vaddr)
 {
-    pr_debug("%s:offset=%d, size=%d, vaddr=0x%x\n", \
+    //pr_debug("%s:offset=%d, size=%d, vaddr=0x%x\n", \
         __func__, offset, size, vaddr);
     // calculate the count of pages
     uint32_t vaddr_max = vaddr + size - 1;
@@ -380,7 +382,7 @@ static void process_create(struct task_struct* child)
 
 static void process_start(void* entry)
 {
-    pr_debug("%s:entry=0x%x\n", __func__, entry);
+    //pr_debug("%s:entry=0x%x\n", __func__, entry);
 
     // user stack
     uint32_t* usr_stack = page_malloc(PF_USER, (void*)U_STACK_START, 1);
@@ -396,7 +398,7 @@ static void process_start(void* entry)
     sp->cs = SELECTOR_U_CODE;
     sp->esp = (uint32_t)usr_stack + PG_SIZE;
     sp->ss = SELECTOR_U_STACK;
-    pr_debug("eip=0x%x, cs=0x%x, esp=0x%x, ss=0x%x\n", \
+    //pr_debug("eip=0x%x, cs=0x%x, esp=0x%x, ss=0x%x\n", \
         sp->eip, sp->cs, sp->esp, sp->ss);
 
     // switch to ring 3
@@ -407,7 +409,7 @@ static void process_start(void* entry)
 
 static void process_copy(struct task_struct* child, struct task_struct* parent)
 {
-    pr_debug("%s +++\n", __func__);
+    //pr_debug("%s +++\n", __func__);
 
     // assign parent pid
     child->ppid = parent->pid;
@@ -434,7 +436,7 @@ static void process_copy(struct task_struct* child, struct task_struct* parent)
         (uint32_t)parent + PG_SIZE - stack_len;
     uint32_t child_stack = child->kstack + sizeof(struct kstack_switch);
     memcpy((void*)child_stack, (void*)parent_stack, stack_len);
-    pr_debug("stack_len=%d\n", stack_len);
+    //pr_debug("stack_len=%d\n", stack_len);
 
     // user space virtual address
     vaddr_create(child);
@@ -446,7 +448,7 @@ static void process_copy(struct task_struct* child, struct task_struct* parent)
     // copy the user space
     vaddr_copy(child, parent);
 
-    pr_debug("%s ---\n", __func__);
+    //pr_debug("%s ---\n", __func__);
 }
 
 static void process_fork_start(void* arg)
@@ -506,6 +508,26 @@ void process_init()
 {
     pr_debug("%s +++\n", __func__);
 
+    // load programs
+    struct dirstream* dir = sys_opendir("/sdb_1/bin/");
+    if (NULL == dir) {
+        pr_debug("%s:mkdir /sdb_1/bin/ \n", __func__);
+        sys_mkdir("/sdb_1/bin/");
+    }
+    uint32_t sec_start = PROG_START_SECTOR;
+    process_fs(sec_start, "/sdb_1/bin/prog");
+
+    // print all programs
+    struct dirent* dir_entry;
+    dir = sys_opendir("/sdb_1/bin/");
+    printk("/sdb_1/bin/: ");
+    while ((dir_entry = sys_readdir(dir)) != NULL)
+    {
+        printk("%s(%d) ", dir_entry->filename, dir_entry->i_no);
+    }
+    printk("\n");
+    sys_closedir(dir);
+
     // user init
     process_fs(USR_START_SECTOR, USR_INIT_PATH);
     int32_t entry = process_load(USR_INIT_PATH);
@@ -549,4 +571,40 @@ pid_t sys_fork(void)
     return child->pid;
 }
 
+int32_t sys_exec(const char* path, char* argv[])
+{
+    // arguments
+    uint32_t argc = 0;
+    while (argv[argc]) {
+        argc++;
+    }
+
+    // load process
+    int32_t entry = process_load(path);
+    if (-1 == entry) {
+        printk("%s: process load %s fail.\n", __func__, path);
+        return -1;
+    }
+
+    // update the name of process
+    struct task_struct* task = kthread_current();
+    if (strlen(path) >= TASK_NAME_LEN) {
+        memcpy(task->name, path, TASK_NAME_LEN - 1);
+        task->name[TASK_NAME_LEN - 1] = 0;
+    } else {
+        strcpy(task->name, path);
+    }
+
+    // return to syscall_entry
+    struct kstack_syscall* sp = (struct kstack_syscall*)\
+        ((uint32_t)task + PG_SIZE - sizeof(struct kstack_syscall));
+    sp->pushad[4] = (uint32_t)argv; // ebx
+    sp->pushad[6] = argc; // ecx
+    sp->eip = entry;
+    sp->esp = U_STACK_START + PG_SIZE;
+    asm volatile ("movl %0, %%esp;" : : "g" (sp));
+    asm volatile ("ret;");
+
+    return 0;
+}
 

@@ -20,6 +20,7 @@ ASFLAGS			= -f elf
 CFLAGS			= -c -m32 -fno-stack-protector -fno-builtin -nostdinc
 LDFLAGS			= -m elf_i386 -Ttext $(KERNEL_ENTRY) -e main -z noexecstack 
 LDFLAGS_USR		= -m elf_i386 -Ttext $(USR_ENTRY) -e init -z noexecstack 
+LDFLAGS_PROG	= -m elf_i386 -z noexecstack
 
 #####################################
 #		Include Files				#
@@ -27,6 +28,7 @@ LDFLAGS_USR		= -m elf_i386 -Ttext $(USR_ENTRY) -e init -z noexecstack
 LIB_INC			= ./lib/inc
 KERNEL_INC		= ./kernel/inc
 USR_INC			= ./usr/inc
+USR_LIB_INC		= ./usr/lib/inc
 
 #####################################
 #		Source Files				#
@@ -34,6 +36,8 @@ USR_INC			= ./usr/inc
 LIB_SRC			= ./lib/src
 KERNEL_SRC		= ./kernel/src
 USR_SRC			= ./usr/src
+USR_LIB_SRC		= ./usr/lib/src
+PROG_SRC		= ./usr/bin
 
 #####################################
 #		Output Files				#
@@ -41,6 +45,8 @@ USR_SRC			= ./usr/src
 lib_obj			:=
 kernel_obj		:=
 usr_obj			:=
+usr_lib_obj		:=
+prog_obj		:=
 
 #####################################
 #		MBR: mbr.bin				#
@@ -64,7 +70,13 @@ $(BUILD_DIR)/%.o: $(KERNEL_SRC)/%.c
 	$(CC) $(CFLAGS) -I $(LIB_INC) -I $(KERNEL_INC) $< -o $@
 
 $(BUILD_DIR)/%.o: $(USR_SRC)/%.c
-	$(CC) $(CFLAGS) -I $(LIB_INC) -I $(USR_INC) $< -o $@
+	$(CC) $(CFLAGS) -I $(LIB_INC) -I $(USR_LIB_INC) -I $(USR_INC) $< -o $@
+
+$(BUILD_DIR)/%.o: $(USR_LIB_SRC)/%.c
+	$(CC) $(CFLAGS) -I $(LIB_INC) -I $(USR_LIB_INC) $< -o $@
+
+$(BUILD_DIR)/%.o: $(PROG_SRC)/%.c
+	$(CC) $(CFLAGS) -I $(LIB_INC) -I $(USR_LIB_INC) $< -o $@
 
 #####################################
 #      	Object Files: Assembly		#
@@ -76,6 +88,9 @@ $(BUILD_DIR)/%.o: $(KERNEL_SRC)/%.s
 	$(AS) $(ASFLAGS) $< -o $@
 
 $(BUILD_DIR)/%.o: $(USR_SRC)/%.s
+	$(AS) $(ASFLAGS) $< -o $@
+
+$(BUILD_DIR)/%.o: $(PROG_SRC)/%.s
 	$(AS) $(ASFLAGS) $< -o $@
 
 #####################################
@@ -113,11 +128,16 @@ kernel_obj	+= $(BUILD_DIR)/process.o
 kernel_obj	+= $(lib_obj)
 
 #####################################
+#		User Lib Object Files		#
+#####################################
+usr_lib_obj	+= $(BUILD_DIR)/syscall_usr.o
+usr_lib_obj	+= $(BUILD_DIR)/printf.o
+
+#####################################
 #		User Object Files			#
 #####################################
-usr_obj		+= $(BUILD_DIR)/syscall_usr.o
-usr_obj		+= $(BUILD_DIR)/printf.o
 usr_obj		+= $(BUILD_DIR)/usr_init.o
+usr_obj		+= $(usr_lib_obj)
 usr_obj		+= $(lib_obj)
 
 #####################################
@@ -127,10 +147,20 @@ $(OUT_DIR)/kernel.bin: $(kernel_obj)
 	$(LD) $(LDFLAGS) $^ -o $@
 
 #####################################
-#		User Program				#
+#		User: user.bin				#
 #####################################
 $(OUT_DIR)/usr.bin: $(usr_obj)
 	$(LD) $(LDFLAGS_USR) $^ -o $@
+
+#####################################
+#		Programs					#
+#####################################
+prog_obj	:= $(BUILD_DIR)/start.o
+prog_obj	+= $(BUILD_DIR)/prog.o
+prog_obj    += $(usr_lib_obj)
+prog_obj	+= $(lib_obj)
+$(OUT_DIR)/prog: $(prog_obj)
+	$(LD) $(LDFLAGS_PROG) $^ -o $@
 
 #####################################
 #		Command						#
@@ -152,6 +182,7 @@ clean:
 	@echo ">>>make $@ done."
 
 all: dir $(OUT_DIR)/mbr.bin $(OUT_DIR)/loader.bin $(OUT_DIR)/kernel.bin \
-		$(OUT_DIR)/usr.bin
+		$(OUT_DIR)/usr.bin \
+		$(OUT_DIR)/prog
 	@echo ">>>make $@ done."
 
