@@ -35,6 +35,8 @@ void syscall_init(void)
 #include "process.h"
     syscall_func[SYS_FORK]      = sys_fork;
     syscall_func[SYS_EXEC]      = sys_exec;
+    syscall_func[SYS_WAIT]      = sys_wait;
+    syscall_func[SYS_EXIT]      = sys_exit;
 #include "file.h"
     syscall_func[SYS_WRITE]     = sys_write;
 }

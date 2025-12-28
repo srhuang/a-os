@@ -141,6 +141,7 @@ struct kstack_syscall {
 // global variable
 //=========================
 static struct tss usr_tss;
+pid_t pid_init = -1;
 
 //=========================
 // internal functions
@@ -185,7 +186,7 @@ static void vaddr_create(struct task_struct* task)
 {
     // user space virtual address
     struct v_pool* vp = kmalloc(sizeof(struct v_pool));
-    //pr_debug("%s:vp=0x%x\n", __func__, vp);
+    pr_debug("%s:vp=0x%x\n", __func__, vp);
     vp->vaddr_start = U_VADDR_START;
     // user virtual address bitmap
     uint32_t free_pages = (0xC0000000 - U_VADDR_START) / PG_SIZE;
@@ -197,7 +198,7 @@ static void vaddr_create(struct task_struct* task)
     bitmap_reset(btmp);
     // virtual address lock
     mutex_init(&vp->mlock);
-    //pr_debug("%s:btmp_addr=0x%x, btmp_pg_cnt=%d\n", \
+    pr_debug("%s:btmp_addr=0x%x, btmp_pg_cnt=%d\n", \
         __func__, btmp_addr, btmp_pg_cnt);
     task->u_v_pool = vp;
 
@@ -206,7 +207,7 @@ static void vaddr_create(struct task_struct* task)
         kmalloc(sizeof(struct mem_block_desc[MEM_BLOCK_CNT]));
     //pr_debug("%s:mblock size=%d\n", __func__, \
         sizeof(struct mem_block_desc[MEM_BLOCK_CNT]));
-    //pr_debug("%s:mblock=0x%x\n", __func__, mblock);
+    pr_debug("%s:mblock=0x%x\n", __func__, mblock);
     mem_block_init(mblock);
     task->mblock = mblock;
 }
@@ -256,6 +257,24 @@ static void vaddr_copy(struct task_struct* child, struct task_struct* parent)
     page_free(PF_KERNEL, buf, 1);
 }
 
+static void vaddr_delete(struct task_struct* task)
+{
+    // release virtual address bitmap
+    struct v_pool* vp = task->u_v_pool;
+    uint8_t* btmp_addr = vp->vaddr_bitmap.bits;
+    uint32_t btmp_len = vp->vaddr_bitmap.len;
+    uint32_t btmp_pg_cnt = DIV_ROUND_UP(btmp_len, PG_SIZE);
+    pr_debug("%s:btmp_addr=0x%x, pg_cnt=%d\n", \
+        __func__, btmp_addr, btmp_pg_cnt);
+    page_free(PF_KERNEL, btmp_addr, btmp_pg_cnt);
+
+    // release vp and mblock
+    pr_debug("%s:vp=0x%x\n", __func__, vp);
+    kfree(vp);
+    pr_debug("%s:mblock=0x%x\n", __func__, task->mblock);
+    kfree(task->mblock);
+}
+
 static void page_create(struct task_struct* task, uint32_t start_idx)
 {
     // page table
@@ -271,10 +290,40 @@ static void page_create(struct task_struct* task, uint32_t start_idx)
     uint32_t paddr = (*ptr & 0xfffff000);
     // update pde physical address
     *(pde_child + 1023) = paddr | PG_US_U | PG_RW_W | PG_P_1;
-    //pr_debug("%s:pde vaddr=0x%x, paddr=0x%x\n", __func__, vaddr, paddr);
+    pr_debug("%s:pde vaddr=0x%x, paddr=0x%x\n", __func__, vaddr, paddr);
 
     task->pgdir_paddr = paddr;
     task->pgdir_vaddr = vaddr;
+}
+
+static void page_delete(struct task_struct* task)
+{
+    uint8_t* btmp_addr = task->u_v_pool->vaddr_bitmap.bits;
+    uint32_t btmp_len = task->u_v_pool->vaddr_bitmap.len;
+    uint32_t vaddr_start = task->u_v_pool->vaddr_start;
+
+    uint32_t idx_byte;
+    uint32_t idx_bit;
+    uint32_t vaddr;
+
+    // release all user space
+    for (idx_byte = 0; idx_byte < btmp_len; idx_byte++)
+    {
+        if (0 == btmp_addr[idx_byte]) {
+            continue;
+        }
+        for (idx_bit = 0; idx_bit < 8; idx_bit++)
+        {
+            if (btmp_addr[idx_byte] & (1 << idx_bit)) {
+                vaddr = vaddr_start + ((idx_byte * 8 + idx_bit) * PG_SIZE);
+                pr_debug("%s:vaddr=0x%x\n", __func__, vaddr);
+                page_free(PF_USER, (void*)vaddr, 1);
+            } // if
+        } //for (idx_bit...
+    } // for (idx_byte...
+
+    // release page directory (user space)
+    pgdir_delete();
 }
 
 static void process_fs(uint32_t sec_start, const char* path)
@@ -373,7 +422,7 @@ static void process_create(struct task_struct* child)
     uint32_t btmp_idx = \
         (U_HEAP_START - child->u_v_pool->vaddr_start) / PG_SIZE / 8;
     memcpy(c_btmp_addr + btmp_idx, p_btmp_addr, p_btmp_len);
-    //pr_debug("%s:p_btmp_addr=0x%x, btmp_idx=0x%x, p_btmp_len=0x%x\n", \
+    pr_debug("%s:p_btmp_addr=0x%x, btmp_idx=0x%x, p_btmp_len=0x%x\n", \
         __func__, p_btmp_addr, btmp_idx, p_btmp_len);
 
     // page table
@@ -469,6 +518,30 @@ static void process_fork_start(void* arg)
     asm volatile ("ret;");
 }
 
+static void process_exit(struct task_struct* task)
+{
+    //pr_debug("%s +++\n", __func__);
+
+    // release pid
+    pid_release(task->pid);
+
+    // remove from scheduler
+    task->status = TASK_DIED;
+    if (list_find(&task_ready_list, &task->task_tag)) {
+        list_remove(&task->task_tag);
+    }
+    list_remove(&task->task_all_tag);
+
+    // release page table
+    pr_debug("%s:release pg_dir=0x%x\n", __func__, task->pgdir_vaddr);
+    page_free(PF_KERNEL, (void*)task->pgdir_vaddr, 1);
+
+    // release struct task
+    page_free(PF_KERNEL, task, 1);
+
+    //pr_debug("%s ---\n", __func__);
+}
+
 //=========================
 // external functions
 //=========================
@@ -540,6 +613,7 @@ void process_init()
     struct task_struct* task = \
         kthread_create(process_start, (void*)entry, "init");
     process_create(task);
+    pid_init = task->pid;
 
     // run task
     kthread_run(task);
@@ -555,7 +629,7 @@ void process_switch(struct task_struct* task)
 
 pid_t sys_fork(void)
 {
-    pr_debug("%s +++\n", __func__);
+    //pr_debug("%s +++\n", __func__);
     struct task_struct* parent = kthread_current();
 
     // create task
@@ -567,7 +641,7 @@ pid_t sys_fork(void)
     // run task
     kthread_run(child);
 
-    pr_debug("%s ---\n", __func__);
+    //pr_debug("%s ---\n", __func__);
     return child->pid;
 }
 
@@ -606,5 +680,94 @@ int32_t sys_exec(const char* path, char* argv[])
     asm volatile ("ret;");
 
     return 0;
+}
+
+pid_t sys_wait(int32_t* status)
+{
+    struct task_struct* parent = kthread_current();
+
+    while(1)
+    {
+        bool has_child = false;
+        struct task_struct* child;
+        struct list_elem* cur_elem = task_all_list.head.next;
+        while (cur_elem != &task_all_list.tail)
+        {
+            // Check whether the process has any child processes
+            child = elem2entry(struct task_struct, task_all_tag, cur_elem);
+            if (child->ppid != parent->pid) {
+                cur_elem = cur_elem->next;
+                continue;
+            }
+            has_child = true;
+            pr_debug("%s:child pid=%d, status=%d\n", \
+                __func__, child->pid, child->status);
+
+            // find hanging child task
+            if (child->status == TASK_HANGING) {
+                *status = child->exit_code;
+                pid_t pid_child = child->pid;
+                // release page table and task
+                process_exit(child);
+                return pid_child;
+            }
+            cur_elem = cur_elem->next;
+        } // while
+
+        // Check whether the process has any child processes
+        if (false == has_child) {
+            return -1;
+        } else {
+            pr_debug("%s:block\n", __func__);
+            kthread_block(TASK_WAITING);
+        }
+    } // while(1)
+}
+
+void sys_exit(int32_t exit_code)
+{
+    struct task_struct* child = kthread_current();
+    child->exit_code = exit_code;
+
+    struct task_struct* parent = NULL;
+    struct task_struct* task;
+    struct list_elem* cur_elem = task_all_list.head.next;
+    while (cur_elem != &task_all_list.tail)
+    {
+        task = elem2entry(struct task_struct, task_all_tag, cur_elem);
+        // Make init the parent of all child processes of task.
+        if (task->ppid == child->pid) {
+            task->ppid = pid_init;
+        }
+
+        // find the parent task
+        if (task->pid == child->ppid) {
+            parent = task;
+            pr_debug("%s:parent pid=%d, status=%d\n", \
+                __func__, parent->pid, parent->status);
+        }
+        cur_elem = cur_elem->next;
+    } // while
+
+    // release all resource
+    page_delete(child);
+    vaddr_delete(child);
+
+    // close all file descriptor
+    uint32_t fd;
+    for (fd = 3; fd < MAX_FD_PER_TASK; fd++)
+    {
+        if (-1 != child->open_fd[fd]) {
+            sys_close(fd);
+        }
+    }
+
+    // Wait for the parent process to perform reaping.
+    if (TASK_WAITING == parent->status) {
+        pr_debug("%s:unblock\n", __func__);
+        child->status = TASK_HANGING;
+        kthread_unblock(parent);
+    }
+    kthread_block(TASK_HANGING);
 }
 

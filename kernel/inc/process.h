@@ -18,15 +18,17 @@
 //=========================
 // external variable
 //=========================
-
+extern pid_t pid_init;
 
 //=========================
 // function
 //=========================
-void tss_init(void);
-void process_init(void);
-void process_switch(struct task_struct* task);
-pid_t sys_fork(void);
+void    tss_init(void);
+void    process_init(void);
+void    process_switch(struct task_struct* task);
+pid_t   sys_fork(void);
 int32_t sys_exec(const char* path, char* argv[]);
+pid_t   sys_wait(int32_t* status);
+void    sys_exit(int32_t exit_code);
 
 #endif

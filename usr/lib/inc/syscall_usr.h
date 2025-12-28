@@ -24,6 +24,8 @@ int16_t getpid(void);
 // process.h
 int16_t fork(void);
 int32_t exec(const char* path, char* argv[]);
+int16_t wait(int32_t* status);
+void    exit(int32_t exit_code);
 
 // file.h
 int32_t write(uint32_t fd, uint8_t* buf, uint32_t cnt);

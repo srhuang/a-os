@@ -71,6 +71,14 @@ int32_t exec(const char* path, char* argv[])
 {
     return _syscall2(SYS_EXEC, path, argv);
 }
+int16_t wait(int32_t* status)
+{
+    return _syscall1(SYS_WAIT, status);
+}
+void exit(int32_t exit_code)
+{
+    _syscall1(SYS_EXIT, exit_code);
+}
 
 // file.h
 int32_t write(uint32_t fd, uint8_t* buf, uint32_t cnt)
