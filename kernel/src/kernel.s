@@ -123,6 +123,7 @@ syscall_entry:
     push edx                    ; argument 3
     push ecx                    ; argument 2
     push ebx                    ; argument 1
+    sti                         ; syscall MUST enbale interrupt
     call [syscall_func + eax * 4]   ; call the external function
     add esp, 12                 ; clear argument in stack
 
