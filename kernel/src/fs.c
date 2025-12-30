@@ -51,7 +51,7 @@ struct dirent root_blk[ROOT_DIR_MAX];
 static void root_dir_init()
 {
     struct inode_sys* root_inode = \
-        (struct inode_sys*)sys_malloc(sizeof(struct inode_sys));
+        (struct inode_sys*)kmalloc(sizeof(struct inode_sys));
 
     struct dirent* dir = (struct dirent*)root_blk;
     memset(dir, 0, BLOCK_SIZE);
@@ -115,7 +115,7 @@ void fs_format(struct ide_ptn* ptn)
 
     // The block bitmap is larger than the inode bitmap
     uint32_t buf_size = sb.blk_btmp_sec * SECTOR_SIZE;
-    uint8_t* buf = (uint8_t*)sys_malloc(buf_size);
+    uint8_t* buf = (uint8_t*)kmalloc(buf_size);
 
     // reset inode bitmap
     memset(buf, 0, buf_size);
@@ -166,7 +166,7 @@ void fs_format(struct ide_ptn* ptn)
     // write to hd
     ide_write(ptn->hd, sb.blk_lba, buf, 1);
 
-    sys_free(buf);
+    kfree(buf);
 }
 
 void fs_mount(struct ide_ptn* ptn)
@@ -177,14 +177,14 @@ void fs_mount(struct ide_ptn* ptn)
     //pr_debug("%s +++\n", __func__);
 
     // init: get super block
-    sb = (struct super_block*)sys_malloc(sizeof(struct super_block));
+    sb = (struct super_block*)kmalloc(sizeof(struct super_block));
     ide_read(ptn->hd, ptn->start_lba + 1, sb, 1);
     // init: set inode
     ptn->inode_cnt = sb->inode_cnt;
     ptn->inode_btmp_lba = sb->inode_btmp_lba;
     ptn->inode_btmp.len = sb->inode_btmp_sec * SECTOR_SIZE;
     ptn->inode_btmp.bits = \
-        (uint8_t*)sys_malloc(ptn->inode_btmp.len);
+        (uint8_t*)kmalloc(ptn->inode_btmp.len);
     ide_read(ptn->hd, ptn->inode_btmp_lba, \
         ptn->inode_btmp.bits, sb->inode_btmp_sec);
     ptn->inode_table_lba = sb->inode_table_lba;
@@ -192,7 +192,7 @@ void fs_mount(struct ide_ptn* ptn)
     ptn->blk_btmp_lba = sb->blk_btmp_lba;
     ptn->blk_btmp.len = sb->blk_btmp_sec * SECTOR_SIZE;
     ptn->blk_btmp.bits = \
-        (uint8_t*)sys_malloc(ptn->blk_btmp.len);
+        (uint8_t*)kmalloc(ptn->blk_btmp.len);
     ide_read(ptn->hd, ptn->blk_btmp_lba, \
         ptn->blk_btmp.bits, sb->blk_btmp_sec);
     ptn->blk_lba = sb->blk_lba;
@@ -226,7 +226,7 @@ void fs_mount(struct ide_ptn* ptn)
     assert(dir_idx < ROOT_DIR_MAX);
     pr_debug("root dir size: %d\n", root_dir.inode->i_size);
 
-    sys_free(sb);
+    kfree(sb);
     //pr_debug("%s ---\n", __func__);
 }
 
@@ -266,7 +266,7 @@ void fs_init()
     }
 
     struct super_block* sb_buf = \
-        (struct super_block*)sys_malloc(SECTOR_SIZE);
+        (struct super_block*)kmalloc(SECTOR_SIZE);
 
     // parsing each partition
     cur_elem = ptn_list.head.next;
@@ -289,7 +289,7 @@ void fs_init()
         // next partition
         cur_elem = cur_elem->next;
     } // while
-    sys_free(sb_buf);
+    kfree(sb_buf);
 
     pr_debug("%s ---\n", __func__);
 }

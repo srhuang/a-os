@@ -45,12 +45,12 @@ static int32_t blk_acquire(struct ide_ptn* ptn)
     ide_write(ptn->hd, blk_btmp_lba, blk_btmp_addr, 1);
 
     // clear block on hard disk
-    char* buf = (char*)sys_malloc(BLOCK_SIZE);
+    char* buf = (char*)kmalloc(BLOCK_SIZE);
     memset(buf, 0, BLOCK_SIZE);
     uint32_t blk_sec = (blk_btmp_idx * BLOCK_SIZE) / SECTOR_SIZE;
     uint32_t blk_lba = ptn->blk_lba + blk_sec;
     ide_write(ptn->hd, blk_lba, buf, (BLOCK_SIZE / SECTOR_SIZE));
-    sys_free(buf);
+    kfree(buf);
 
     pr_debug("%s:blk_lba(%d).\n", __func__, blk_lba);
 
@@ -117,7 +117,7 @@ static int32_t blk_read( \
             printk("%s:There is NO single indirect blocks.\n", __func__);
             return -1;
         }
-        uint32_t* buf = (uint32_t*)sys_malloc(BLOCK_SIZE);
+        uint32_t* buf = (uint32_t*)kmalloc(BLOCK_SIZE);
         ide_read(ptn->hd, blk_lba, buf, (BLOCK_SIZE / SECTOR_SIZE));
     }
 
@@ -152,7 +152,7 @@ static int32_t blk_read( \
 
     // release memory
     if (NULL != buf) {
-        sys_free(buf);
+        kfree(buf);
     }
     return ret;
 }
@@ -183,7 +183,7 @@ static int32_t blk_write( \
 
     // get the single indirect blocks
     if ((blk_idx_max >= DIRECT_IDX_MAX)) {
-        buf = (uint32_t*)sys_malloc(BLOCK_SIZE);
+        buf = (uint32_t*)kmalloc(BLOCK_SIZE);
         memset(buf, 0, BLOCK_SIZE);
         if (0 != inode->i_block[DIRECT_IDX_MAX]) {
             // already acquired
@@ -235,7 +235,7 @@ static int32_t blk_write( \
 
     // release memory
     if (NULL != buf) {
-        sys_free(buf);
+        kfree(buf);
     }
     return 0;
 }
@@ -249,7 +249,7 @@ static void inode_table_update(struct inode_sys* inode)
     uint32_t inode_no_hd = inode->i_no - ptn->inode_base;
 
     // update inode table to hard disk
-    char* buf = (char*)sys_malloc(SECTOR_SIZE);
+    char* buf = (char*)kmalloc(SECTOR_SIZE);
     uint32_t inode_sec = inode_no_hd / INODE_PER_SEC;
     uint32_t inode_offset = \
         (inode_no_hd % INODE_PER_SEC) * sizeof(struct inode_hd);
@@ -261,7 +261,7 @@ static void inode_table_update(struct inode_sys* inode)
     ide_read(ptn->hd, inode_lba, buf, 1);
     memcpy(buf + inode_offset, inode, sizeof(struct inode_hd));
     ide_write(ptn->hd, inode_lba, buf, 1);
-    sys_free(buf);
+    kfree(buf);
 }
 
 //=========================
@@ -297,13 +297,11 @@ struct inode_sys* inode_open(uint32_t inode_no)
     struct list_elem* elem;
     struct inode_sys* ret_inode = NULL;
     struct inode_sys* inode;
-
     // get partition
     struct ide_ptn* ptn = inode_get_ptn(inode_no);
     assert(NULL != ptn);
 
     mutex_lock(&ptn->mlock);
-
     // get inode from cache
     elem = ptn->open_inodes.head.next;
     while (elem != &ptn->open_inodes.tail)
@@ -321,28 +319,24 @@ struct inode_sys* inode_open(uint32_t inode_no)
         mutex_unlock(&ptn->mlock);
         return ret_inode;
     }
-
     // transfer the inode number
     uint32_t inode_no_hd = inode_no - ptn->inode_base;
-
     // check inode valid
     if (!bitmap_check(&ptn->inode_btmp, inode_no_hd)) {
         printk("%s:Invalid inode(%d).\n", __func__, inode_no);
         mutex_unlock(&ptn->mlock);
         return NULL;
     }
-
     // get inode from hard disk
-    uint8_t* buf = (uint8_t*)sys_malloc(SECTOR_SIZE);
-    ret_inode = (struct inode_sys*)sys_malloc(sizeof(struct inode_sys));
+    uint8_t* buf = (uint8_t*)kmalloc(SECTOR_SIZE);
+    ret_inode = (struct inode_sys*)kmalloc(sizeof(struct inode_sys));
     uint32_t inode_sec = inode_no_hd / INODE_PER_SEC;
     uint32_t inode_offset = \
         (inode_no_hd % INODE_PER_SEC) * sizeof(struct inode_hd);
     uint32_t inode_lba = ptn->inode_table_lba + inode_sec;
     ide_read(ptn->hd, inode_lba, buf, 1);
     memcpy(ret_inode, buf + inode_offset, sizeof(struct inode_hd));
-    sys_free(buf);
-
+    kfree(buf);
     // transfer the inode number and add it to the cache
     ret_inode->i_no = ptn->inode_base + inode_no_hd;
     ret_inode->open_cnt = 1;
@@ -363,7 +357,7 @@ void inode_close(struct inode_sys* inode)
     inode->open_cnt--;
     if(0 == inode->open_cnt) {
         list_remove(&inode->inode_tag);
-        sys_free(inode);
+        kfree(inode);
     }
 
     mutex_unlock(&ptn->mlock);
@@ -389,7 +383,7 @@ struct inode_sys* inode_acquire(struct ide_ptn* ptn)
 
     // allocate inode table
     struct inode_sys* inode = \
-        (struct inode_sys*)sys_malloc(sizeof(struct inode_sys));
+        (struct inode_sys*)kmalloc(sizeof(struct inode_sys));
     inode->i_no = inode_btmp_idx;
     inode->i_size = 0;
     inode->open_cnt = 0;
@@ -399,7 +393,7 @@ struct inode_sys* inode_acquire(struct ide_ptn* ptn)
     }
 
     // update inode table to hard disk
-    char* buf = (char*)sys_malloc(SECTOR_SIZE);
+    char* buf = (char*)kmalloc(SECTOR_SIZE);
     uint32_t inode_sec = inode->i_no / INODE_PER_SEC;
     uint32_t inode_offset = \
         (inode->i_no % INODE_PER_SEC) * sizeof(struct inode_hd);
@@ -408,7 +402,7 @@ struct inode_sys* inode_acquire(struct ide_ptn* ptn)
     ide_read(ptn->hd, inode_lba, buf, 1);
     memcpy(buf + inode_offset, inode, sizeof(struct inode_hd));
     ide_write(ptn->hd, inode_lba, buf, 1);
-    sys_free(buf);
+    kfree(buf);
 
     // transfer the inode number and add it to the cache
     inode->i_no += ptn->inode_base;
@@ -441,7 +435,7 @@ void inode_release(struct inode_sys* inode)
     // for single indirect blocks
     blk_lba = inode->i_block[DIRECT_IDX_MAX];
     if (0 != blk_lba) {
-        uint32_t* buf = (uint32_t*)sys_malloc(BLOCK_SIZE);
+        uint32_t* buf = (uint32_t*)kmalloc(BLOCK_SIZE);
         uint32_t buf_idx = 0;
         uint32_t buf_idx_max = BLOCK_SIZE / sizeof(uint32_t);
         ide_read(ptn->hd, blk_lba, buf, (BLOCK_SIZE / SECTOR_SIZE));
@@ -455,7 +449,7 @@ void inode_release(struct inode_sys* inode)
         }
         blk_release(ptn, blk_lba);
         inode->i_block[DIRECT_IDX_MAX] = 0;
-        sys_free(buf);
+        kfree(buf);
     }
 
     // transfer inode number
@@ -473,7 +467,7 @@ void inode_release(struct inode_sys* inode)
 
     // remove from cache
     list_remove(&inode->inode_tag);
-    sys_free(inode);
+    kfree(inode);
 
     mutex_unlock(&ptn->mlock);
 }
@@ -494,7 +488,7 @@ int32_t inode_read( \
     uint32_t blk_tail_idx = (pos + cnt - 1) / BLOCK_SIZE ;
     uint32_t blk_tail_offset = (pos + cnt - 1) % BLOCK_SIZE;
     uint32_t blk_cnt = blk_tail_idx - blk_head_idx + 1;
-    uint8_t* buf = (uint8_t*)sys_malloc(BLOCK_SIZE);
+    uint8_t* buf = (uint8_t*)kmalloc(BLOCK_SIZE);
 
     // check size is valid
     if (( pos + cnt) > inode->i_size) {
@@ -533,7 +527,7 @@ int32_t inode_read( \
     ret = 0;
 
 out:
-    sys_free(buf);
+    kfree(buf);
     mutex_unlock(&ptn->mlock);
     return ret;
 }
@@ -554,7 +548,7 @@ int32_t inode_write( \
     uint32_t blk_tail_idx = (pos + cnt - 1) / BLOCK_SIZE;
     uint32_t blk_tail_offset = (pos + cnt - 1) % BLOCK_SIZE;
     uint32_t blk_cnt = blk_tail_idx - blk_head_idx + 1;
-    uint8_t* buf = (uint8_t*)sys_malloc(BLOCK_SIZE);
+    uint8_t* buf = (uint8_t*)kmalloc(BLOCK_SIZE);
     memset(buf, 0, BLOCK_SIZE);
 
     // handle the first block
@@ -608,7 +602,7 @@ int32_t inode_write( \
     ret = 0;
 
 out:
-    sys_free(buf);
+    kfree(buf);
     mutex_unlock(&ptn->mlock);
     return ret;
 }
@@ -634,7 +628,7 @@ int32_t inode_erase(struct inode_sys* inode, uint32_t cnt)
         uint32_t blk_lba;
         // get the single indirect blocks
         if (blk_idx_before >= DIRECT_IDX_MAX) {
-            buf = (uint32_t*)sys_malloc(BLOCK_SIZE);
+            buf = (uint32_t*)kmalloc(BLOCK_SIZE);
             memset(buf, 0, BLOCK_SIZE);
             blk_lba = inode->i_block[DIRECT_IDX_MAX];
             ide_read(ptn->hd, blk_lba, buf, (BLOCK_SIZE / SECTOR_SIZE));
@@ -681,7 +675,7 @@ int32_t inode_erase(struct inode_sys* inode, uint32_t cnt)
 out:
     // release memory
     if (NULL != buf) {
-        sys_free(buf);
+        kfree(buf);
     }
     mutex_unlock(&ptn->mlock);
     return ret;

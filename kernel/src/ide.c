@@ -196,7 +196,7 @@ static bool ide_get_identify(struct ide_hd* hd)
 static void ide_get_partition(\
     struct ide_hd* hd, uint32_t base, uint32_t offset)
 {
-    struct boot_sector* bs = sys_malloc(sizeof(struct boot_sector));
+    struct boot_sector* bs = kmalloc(sizeof(struct boot_sector));
     struct ptn_table* ptable = bs->ptable;
     uint32_t idx;
     static int ptn_nr = 0;
@@ -233,7 +233,7 @@ static void ide_get_partition(\
             pr_debug("    type:0x%x", ptable->type);
 
             // set partition table info
-            struct ide_ptn* ptn = sys_malloc(sizeof(struct ide_ptn));
+            struct ide_ptn* ptn = kmalloc(sizeof(struct ide_ptn));
             if (0 == base) { // primary partition
                 sprintf(ptn->name, "%s_%d", hd->name, idx+1);
             } else { // extended partition
@@ -252,7 +252,7 @@ static void ide_get_partition(\
         ptable++;
     }
 
-    sys_free(bs);
+    kfree(bs);
 }
 
 static void ide_ch_init(void)

@@ -85,7 +85,10 @@ void*   page_malloc(enum pool_flags pf, void* vaddr, int pg_cnt);
 void    page_free(enum pool_flags pf, void* vaddr, int pg_cnt);
 void*   sys_malloc(uint32_t size);
 void    sys_free(void* vaddr);
+void*   kmalloc(uint32_t size);
+void    kfree(void* vaddr);
 void    mem_init(void);
 void    mem_block_init(struct mem_block_desc* p_mem_block);
+void    pgdir_delete(void);
 
 #endif

@@ -443,14 +443,14 @@ void test_memory()
     page_free(PF_KERNEL, vaddr_1, 2);
     //*/
 
-    put_str("test sys_malloc(31): ");
-    void* vaddr_4 = sys_malloc(31);
+    put_str("test kmalloc(31): ");
+    void* vaddr_4 = kmalloc(31);
     put_int((uint32_t)vaddr_4);
     put_str("\n");
 
     //*
-    put_str("test sys_malloc(29): ");
-    void* vaddr_5 = sys_malloc(29);
+    put_str("test kmalloc(29): ");
+    void* vaddr_5 = kmalloc(29);
     put_int((uint32_t)vaddr_5);
     put_str("\n");
     //*/
@@ -480,8 +480,8 @@ void test_memory()
     //*/
 
     //*
-    put_str("test sys_free\n");
-    sys_free(vaddr_4);
+    put_str("test kfree\n");
+    kfree(vaddr_4);
     //*/
 }
 
@@ -800,8 +800,8 @@ void thread_xxx(void* arg)
         //*/
 
         //*
-        void* vaddr = sys_malloc(31);
-        sys_free(vaddr);
+        void* vaddr = kmalloc(31);
+        kfree(vaddr);
         //*/
     }
 }
@@ -822,8 +822,8 @@ void thread_yyy(void* arg)
         //*/
 
         //*
-        void* vaddr = sys_malloc(31);
-        sys_free(vaddr);
+        void* vaddr = kmalloc(31);
+        kfree(vaddr);
         //*/
     }
 }
@@ -844,8 +844,8 @@ void thread_zzz(void* arg)
         //*/
 
         //*
-        void* vaddr = sys_malloc(31);
-        sys_free(vaddr);
+        void* vaddr = kmalloc(31);
+        kfree(vaddr);
         //*/
     }
 }
@@ -989,7 +989,7 @@ void test_inode()
 
     printk("inode_read()/inode_write()\n");
     // prepare the data
-    void* buf = sys_malloc(BLOCK_SIZE*2);
+    void* buf = kmalloc(BLOCK_SIZE*2);
     uint8_t* p_buf = (uint8_t*)buf;
     int idx = 0;
     while (idx < BLOCK_SIZE*2)
@@ -1040,7 +1040,7 @@ void test_inode()
     inode = inode_open(4098);
     printk("test updating inode table, size=%d\n", inode->i_size);
 
-    sys_free(buf);
+    kfree(buf);
 
     printk("%s ---\n", __func__);
 }
@@ -1157,7 +1157,7 @@ void test_file()
 
     // test sys_write(), sys_read()
     printk("\ntest sys_write(), sys_read()\n");
-    void* buf = sys_malloc(BLOCK_SIZE*2);
+    void* buf = kmalloc(BLOCK_SIZE*2);
     uint8_t* p_buf = (uint8_t*)buf;
     int idx = 0;
     while (idx < BLOCK_SIZE*2)

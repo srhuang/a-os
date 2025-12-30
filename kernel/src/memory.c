@@ -456,6 +456,73 @@ static void mem_release(struct v_pool* vp, struct p_pool* pp, void* vaddr)
     }
 }
 
+static void* mem_alloc(struct mem_block_desc* mblock, \
+    struct v_pool* vp, struct p_pool* pp, uint32_t size)
+{
+    void* vaddr = NULL;
+
+    if (size > 1024) {
+        uint32_t page_cnt = DIV_ROUND_UP(size + sizeof(struct arena), PG_SIZE);
+        struct arena* a = (struct arena*)page_acquire(vp, pp, NULL, page_cnt);
+        if (NULL == a) {
+            return NULL;
+        }
+        memset(a, 0, page_cnt * PG_SIZE);
+        //set arena info
+        a->p_mem_block = NULL;
+        a->cnt = page_cnt;
+        a->is_page_cnt = true;
+        vaddr = (void*)(a+1);
+
+        /* for debugging
+        uint32_t* p_arena = (uint32_t*)a;
+        TRACE_STR("mem_alloc:arena=0x");
+        TRACE_INT((uint32_t)p_arena);
+        TRACE_STR(", cnt=0x");
+        TRACE_INT(*(p_arena+1));
+        TRACE_STR("\n");
+        //*/
+
+    } else { // using memory block
+        // find a suitable size
+        uint8_t mblock_idx = 0;
+        for (mblock_idx=0; mblock_idx<MEM_BLOCK_CNT; mblock_idx++)
+        {
+            if (size <= mblock[mblock_idx].block_size) {
+                break;
+            }
+        } //for
+
+        mutex_lock(&mblock[mblock_idx].mlock);
+        vaddr = mem_acquire(vp, pp, mblock, mblock_idx);
+        mutex_unlock(&mblock[mblock_idx].mlock);
+    } // if-else (size > 1024)
+
+    return vaddr;
+}
+
+void mem_free(struct v_pool* vp, struct p_pool* pp, void* vaddr)
+{
+    struct arena* a = block2arena((struct mem_block*)vaddr);
+
+    /* for debugging
+    uint32_t* p_arena = (uint32_t*)a;
+    TRACE_STR("mem_free:arena=0x");
+    TRACE_INT((uint32_t)p_arena);
+    TRACE_STR(", cnt=0x");
+    TRACE_INT(*(p_arena+1));
+    TRACE_STR("\n");
+    //*/
+
+    if (a->is_page_cnt) {
+        page_release(vp, pp, a, a->cnt);
+    } else { // memory block
+        mutex_lock(&a->p_mem_block->mlock);
+        mem_release(vp, pp, vaddr);
+        mutex_unlock(&a->p_mem_block->mlock);
+    }
+}
+
 //=========================
 // external functions
 //=========================
@@ -515,60 +582,13 @@ void* sys_malloc(uint32_t size)
     }
     mblock = task->mblock;
 
-    if (size > 1024) {
-        uint32_t page_cnt = DIV_ROUND_UP(size + sizeof(struct arena), PG_SIZE);
-        struct arena* a = (struct arena*)page_acquire(vp, pp, NULL, page_cnt);
-        if (NULL == a) {
-            return NULL;
-        }
-        memset(a, 0, page_cnt * PG_SIZE);
-        //set arena info
-        a->p_mem_block = NULL;
-        a->cnt = page_cnt;
-        a->is_page_cnt = true;
-        vaddr = (void*)(a+1);
-
-        /* for debugging
-        uint32_t* p_arena = (uint32_t*)a;
-        TRACE_STR("sys_malloc:arena=0x");
-        TRACE_INT((uint32_t)p_arena);
-        TRACE_STR(", cnt=0x");
-        TRACE_INT(*(p_arena+1));
-        TRACE_STR("\n");
-        //*/
-
-    } else { // using memory block
-        // find a suitable size
-        uint8_t mblock_idx = 0;
-        for (mblock_idx=0; mblock_idx<MEM_BLOCK_CNT; mblock_idx++)
-        {
-            if (size <= mblock[mblock_idx].block_size) {
-                break;
-            }
-        } //for
-
-        mutex_lock(&mblock[mblock_idx].mlock);
-        vaddr = mem_acquire(vp, pp, mblock, mblock_idx);
-        mutex_unlock(&mblock[mblock_idx].mlock);
-    } // if-else (size > 1024)
-
-    return vaddr;
+    return mem_alloc(mblock, vp, pp, size);
 }
 
 void sys_free(void* vaddr)
 {
     struct v_pool*  vp;
     struct p_pool*  pp;
-    struct arena*   a = block2arena((struct mem_block*)vaddr);
-
-    /* for debugging
-    uint32_t* p_arena = (uint32_t*)a;
-    TRACE_STR("sys_free:arena=0x");
-    TRACE_INT((uint32_t)p_arena);
-    TRACE_STR(", cnt=0x");
-    TRACE_INT(*(p_arena+1));
-    TRACE_STR("\n");
-    //*/
 
     // determine whether it is kernel task or user task
     struct task_struct* task = kthread_current();
@@ -582,13 +602,17 @@ void sys_free(void* vaddr)
         pp = &u_p_pool;
     }
 
-    if (a->is_page_cnt) {
-        page_release(vp, pp, a, a->cnt);
-    } else { // memory block
-        mutex_lock(&a->p_mem_block->mlock);
-        mem_release(vp, pp, vaddr);
-        mutex_unlock(&a->p_mem_block->mlock);
-    }
+    mem_free(vp, pp, vaddr);
+}
+
+void* kmalloc(uint32_t size)
+{
+    return mem_alloc(k_mem_block, &k_v_pool, &k_p_pool, size);
+}
+
+void kfree(void* vaddr)
+{
+    mem_free(&k_v_pool, &k_p_pool, vaddr);
 }
 
 void mem_block_init(struct mem_block_desc* p_mem_block)
@@ -607,6 +631,23 @@ void mem_block_init(struct mem_block_desc* p_mem_block)
         mutex_init(&p_mem_block[idx].mlock);
 
         block_size *= 2;
+    }
+}
+
+void pgdir_delete(void)
+{
+    // release page directory (user space)
+    uint32_t idx;
+    uint32_t* pde = (uint32_t*)0xFFFFF000;
+    for (idx = 0; idx < 768; idx++)
+    {
+        // check each directory
+        uint32_t addr = *(pde + idx);
+        if (addr & PG_P_1) {
+            //pr_debug("%s:addr=0x%x\n", __func__, addr);
+            *(pde + idx) = 0;
+            pfree(&k_p_pool, (void*)addr);
+        }
     }
 }
 

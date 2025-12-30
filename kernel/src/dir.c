@@ -58,7 +58,7 @@ struct ide_ptn* dir_get_ptn(const char* name)
 int32_t dir_split_path(const char* path, \
     char name[PATH_DEPTH_MAX][FILE_NAME_MAX])
 {
-    uint8_t* buf = (uint8_t*)sys_malloc(strlen(path));
+    uint8_t* buf = (uint8_t*)kmalloc(strlen(path));
     memcpy(buf, path, strlen(path));
 
     //pr_debug("%s:size=%d\n", __func__, strlen(path));
@@ -117,7 +117,7 @@ int dir_search_name(uint32_t inode_no, const char* name, enum file_types type)
     }
 
     // parsing the inode block
-    void* buf = sys_malloc(inode->i_size);
+    void* buf = kmalloc(inode->i_size);
     struct dirent* dir = (struct dirent*)buf;
     uint32_t dir_idx_max = inode->i_size / sizeof(struct dirent);
 
@@ -139,7 +139,7 @@ int dir_search_name(uint32_t inode_no, const char* name, enum file_types type)
         }
     } // for
 
-    sys_free(buf);
+    kfree(buf);
     inode_close(inode);
 
     return ret_inode;
@@ -199,7 +199,7 @@ int32_t dir_parse_path(const char* path, char* child_name)
     // get parent inode and child name
     struct dirstream dir;
     uint32_t size = strlen(path);
-    uint8_t* buf = (uint8_t*)sys_malloc(size);
+    uint8_t* buf = (uint8_t*)kmalloc(size);
     strcpy(buf, path);
     if (*(buf+size-1) == '/') {
         *(buf+size-1) = 0;
@@ -212,7 +212,7 @@ int32_t dir_parse_path(const char* path, char* child_name)
         return -1;
     }
     i_parent = dir.path[cnt-1];
-    sys_free(buf);
+    kfree(buf);
 
     return i_parent;
 }
@@ -230,7 +230,7 @@ void dir_uninstall(uint32_t i_parent, uint32_t i_child)
     // update parent inode
     struct inode_sys* inode = inode_open(i_parent);
     struct ide_ptn* ptn = inode_get_ptn(i_parent);
-    void* buf = sys_malloc(inode->i_size);
+    void* buf = kmalloc(inode->i_size);
     inode_read(inode, 0, buf, inode->i_size);
     struct dirent* dir_entry = (struct dirent*)buf;
     uint32_t idx_max = inode->i_size / sizeof(struct dirent);
@@ -250,7 +250,7 @@ void dir_uninstall(uint32_t i_parent, uint32_t i_child)
         }
         idx++;
     }
-    sys_free(buf);
+    kfree(buf);
     inode_close(inode);
 }
 

@@ -163,7 +163,7 @@ static void segment_load(int32_t fd, \
 static void vaddr_create(struct task_struct* task)
 {
     // user space virtual address
-    struct v_pool* vp = page_malloc(PF_KERNEL, NULL, 1);
+    struct v_pool* vp = kmalloc(sizeof(struct v_pool));
     //pr_debug("%s:vp=0x%x\n", __func__, vp);
     vp->vaddr_start = U_VADDR_START;
     // user virtual address bitmap
@@ -182,7 +182,9 @@ static void vaddr_create(struct task_struct* task)
 
     // for memory block
     struct mem_block_desc* mblock = \
-        (struct mem_block_desc*)((uint8_t*)vp + sizeof(struct v_pool));
+        kmalloc(sizeof(struct mem_block_desc[MEM_BLOCK_CNT]));
+    //pr_debug("%s:mblock size=%d\n", __func__, \
+        sizeof(struct mem_block_desc[MEM_BLOCK_CNT]));
     //pr_debug("%s:mblock=0x%x\n", __func__, mblock);
     mem_block_init(mblock);
     task->mblock = mblock;
@@ -214,11 +216,11 @@ static void process_fs(uint32_t sec_start, const char* path)
     struct ide_hd* hd = &g_ide_ch[0].dev[0];
 
     // get file size from ELF
-    void* buf = sys_malloc(SECTOR_SIZE);
+    void* buf = kmalloc(SECTOR_SIZE);
     ide_read(hd, sec_start, buf, 1);
     struct Elf32_Ehdr* elf = (struct Elf32_Ehdr*)buf;
     uint32_t file_size = elf->e_shoff + (elf->e_shentsize * elf->e_shnum);
-    sys_free(buf);
+    kfree(buf);
     /*/
     pr_debug("Start of section headers:%d\n", elf->e_shoff);
     pr_debug("Size of section headers:%d\n", elf->e_shentsize);
@@ -226,14 +228,14 @@ static void process_fs(uint32_t sec_start, const char* path)
     //*/
 
     // write file to file system
-    buf = sys_malloc(DIV_ROUND_UP(file_size, SECTOR_SIZE) * SECTOR_SIZE);
+    buf = kmalloc(DIV_ROUND_UP(file_size, SECTOR_SIZE) * SECTOR_SIZE);
     ide_read(hd, sec_start, buf, DIV_ROUND_UP(file_size, SECTOR_SIZE));
     int32_t fd = sys_open(path, O_RDWR | O_TRUNC);
     if (-1 == fd) {
         fd = sys_open(path, O_CREATE | O_RDWR | O_TRUNC);
     }
     sys_write(fd, buf, file_size);
-    sys_free(buf);
+    kfree(buf);
     pr_debug("%s:Write File(%s) size:%d\n", __func__, path, file_size);
 }
 
@@ -246,14 +248,14 @@ static int32_t process_load(const char* path)
     }
 
     // get elf
-    void* buf = sys_malloc(sizeof(struct Elf32_Ehdr));
+    void* buf = kmalloc(sizeof(struct Elf32_Ehdr));
     sys_read(fd, buf, sizeof(struct Elf32_Ehdr));
     struct Elf32_Ehdr* elf = (struct Elf32_Ehdr*)buf;
     uint16_t phnum = elf->e_phnum;
     uint16_t phentsize = elf->e_phentsize;
     uint32_t phoff = elf->e_phoff;
     uint32_t entry = elf->e_entry;
-    sys_free(buf);
+    kfree(buf);
     /*/
     pr_debug("Program header number:%d\n", phnum);
     pr_debug("Program header size:%d\n", phentsize);
@@ -261,7 +263,7 @@ static int32_t process_load(const char* path)
     //*/
 
     // parsing program header
-    buf = sys_malloc(sizeof(struct Elf32_Phdr));
+    buf = kmalloc(sizeof(struct Elf32_Phdr));
     uint32_t idx;
     for (idx = 0; idx < phnum; idx++)
     {
@@ -284,7 +286,7 @@ static int32_t process_load(const char* path)
         // next program header
         phoff += phentsize;
     } // for
-    sys_free(buf);
+    kfree(buf);
 
     // close fd
     sys_close(fd);
