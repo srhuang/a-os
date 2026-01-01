@@ -125,6 +125,7 @@ kernel_obj	+= $(BUILD_DIR)/inode.o
 kernel_obj	+= $(BUILD_DIR)/dir.o
 kernel_obj	+= $(BUILD_DIR)/file.o
 kernel_obj	+= $(BUILD_DIR)/process.o
+kernel_obj	+= $(BUILD_DIR)/ioqueue.o
 kernel_obj	+= $(lib_obj)
 
 #####################################

@@ -16,7 +16,14 @@ enum SyscallNR {
     SYS_EXIT,
 
     // file.h
+    SYS_OPEN,
+    SYS_CLOSE,
+    SYS_UNLINK,
+    SYS_READ,
     SYS_WRITE,
+    SYS_LSEEK,
+    SYS_PIPE,
+    SYS_DUP2,
 
     SYSCALL_MAX
 };

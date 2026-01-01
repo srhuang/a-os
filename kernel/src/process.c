@@ -15,7 +15,7 @@
 //=========================
 // debugging
 //=========================
-#define DEBUG
+//#define DEBUG
 
 #ifdef DEBUG
     #define pr_debug(fmt, ...) printk(fmt, ##__VA_ARGS__)
@@ -470,7 +470,11 @@ static void process_copy(struct task_struct* child, struct task_struct* parent)
         uint32_t fd_idx = parent->open_fd[fd];
         if (-1 != fd_idx) {
             child->open_fd[fd] = fd_idx;
-            fd_table[fd_idx].inode->open_cnt++;
+            if (fd_table[fd_idx].flag & O_PIPE) {
+                fd_table[fd_idx].pos++;
+            } else {
+                fd_table[fd_idx].inode->open_cnt++;
+            }
         }
     }
 
@@ -593,12 +597,12 @@ void process_init()
     // print all programs
     struct dirent* dir_entry;
     dir = sys_opendir("/sdb_1/bin/");
-    printk("/sdb_1/bin/: ");
+    pr_debug("/sdb_1/bin/: ");
     while ((dir_entry = sys_readdir(dir)) != NULL)
     {
-        printk("%s(%d) ", dir_entry->filename, dir_entry->i_no);
+        pr_debug("%s(%d) ", dir_entry->filename, dir_entry->i_no);
     }
-    printk("\n");
+    pr_debug("\n");
     sys_closedir(dir);
 
     // user init

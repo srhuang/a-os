@@ -38,6 +38,13 @@ void syscall_init(void)
     syscall_func[SYS_WAIT]      = sys_wait;
     syscall_func[SYS_EXIT]      = sys_exit;
 #include "file.h"
+    syscall_func[SYS_OPEN]      = sys_open;
+    syscall_func[SYS_CLOSE]     = sys_close;
+    syscall_func[SYS_UNLINK]    = sys_unlink;
+    syscall_func[SYS_READ]      = sys_read;
     syscall_func[SYS_WRITE]     = sys_write;
+    syscall_func[SYS_LSEEK]     = sys_lseek;
+    syscall_func[SYS_PIPE]      = sys_pipe;
+    syscall_func[SYS_DUP2]      = sys_dup2;
 }
 

@@ -8,6 +8,7 @@
 // define
 //=========================
 #define MAX_FILE_OPEN   (8192)
+#define PIPE_IOQ_SIZE   (4096)
 
 //=========================
 // struct
@@ -33,6 +34,8 @@ int32_t sys_read(uint32_t task_fd_idx, uint8_t* buf, uint32_t cnt);
 int32_t sys_write(uint32_t task_fd_idx, uint8_t* buf, uint32_t cnt);
 int32_t sys_lseek(int32_t task_fd_idx, int32_t offset, enum whence wh);
 int32_t sys_stat(const char* path, struct fstat* buf);
+int32_t sys_pipe(uint32_t fd[2]);
+void    sys_dup2(uint32_t oldfd, uint32_t newfd);
 void    file_init(void);
 
 #endif

@@ -1221,6 +1221,74 @@ void test_file()
     printk("%s ---\n", __func__);
 }
 
+#include "ioqueue.h"
+struct ioqueue* ioq;
+uint8_t data=0;
+void thread_111(void* arg)
+{
+    while(1)
+    {
+        msleep(100);
+        ioq_put(ioq, data++);
+    }
+}
+
+void thread_222(void* arg)
+{
+    while(1)
+    {
+        msleep(100);
+        ioq_put(ioq, data++);
+    }
+
+}
+
+void thread_333(void* arg)
+{
+    uint32_t item;
+    while(1)
+    {
+        msleep(100);
+        item = ioq_get(ioq);
+        printk("%s:%d\t", arg, item);
+    }
+
+}
+
+void thread_444(void* arg)
+{
+    uint32_t item;
+    while(1)
+    {
+        msleep(100);
+        item = ioq_get(ioq);
+        printk("%s:%d\n", arg, item);
+    }
+
+}
+
+
+void test_ioqueue()
+{
+    printk("%s +++\n", __func__);
+
+    ioq = ioq_init(10);
+
+    //*
+    struct task_struct* task1 = kthread_create(thread_111, "kthread1", "111");
+    struct task_struct* task2 = kthread_create(thread_222, "kthread2", "222");
+    struct task_struct* task3 = kthread_create(thread_333, "kthread3", "333");
+    struct task_struct* task4 = kthread_create(thread_444, "kthread4", "444");
+
+    kthread_run(task1);
+    kthread_run(task2);
+    kthread_run(task3);
+    kthread_run(task4);
+    //*/
+
+    //ioq_deinit(ioq);
+}
+
 //=========================
 // test_all
 //=========================
@@ -1293,5 +1361,7 @@ void test_all()
     /* file.h
     test_file();
     //*/
+
+    //test_ioqueue();
 }
 

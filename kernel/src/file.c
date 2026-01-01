@@ -8,6 +8,8 @@
 #include "thread.h"
 #include "lock.h"
 #include "stdio.h"
+#include "ioqueue.h"
+#include "fcntl.h"
 
 //=========================
 // debugging
@@ -129,6 +131,38 @@ static int32_t file_create(uint32_t i_parent, char* name)
     return i_no;
 }
 
+static int32_t pipe_read(int32_t fd, void* dst, uint32_t cnt)
+{
+    uint8_t* p_dst = (uint8_t*)dst;
+    struct ioqueue* ioq = (struct ioqueue*)fd_table[fd].inode;
+    uint32_t len = ioq_len(ioq);
+    uint32_t size = (len < cnt ? len : cnt);
+
+    uint32_t idx;
+    for (idx = 0; idx < size; idx++)
+    {
+        *p_dst++ = ioq_get(ioq);
+    }
+
+    return idx;
+}
+
+static int32_t pipe_write(int32_t fd, const void* src, uint32_t cnt)
+{
+    uint8_t* p_src = (uint8_t*)src;
+    struct ioqueue* ioq = (struct ioqueue*)fd_table[fd].inode;
+    uint32_t slot = ioq->size - ioq_len(ioq);
+    uint32_t size = (slot < cnt ? slot : cnt);
+
+    uint32_t idx;
+    for (idx = 0; idx < size; idx++)
+    {
+        ioq_put(ioq, *p_src++);
+    }
+
+    return idx;
+}
+
 //=========================
 // external functions
 //=========================
@@ -191,11 +225,20 @@ void sys_close(uint32_t task_fd_idx)
     uint32_t fd_idx = task->open_fd[task_fd_idx];
     struct inode_sys* inode = fd_table[fd_idx].inode;
 
-    // close inode
-    inode_close(inode);
-
-    // release fd
-    fd_release(fd_idx);
+    // deal with the fd_table
+    if (fd_table[fd_idx].flag & O_PIPE) {
+        // pipe fd
+        fd_table[fd_idx].pos--;
+        if (0 == fd_table[fd_idx].pos) {
+            ioq_deinit((struct ioqueue*)fd_table[fd_idx].inode);
+            fd_release(fd_idx);
+        }
+    } else {
+        // close inode
+        inode_close(inode);
+        // release fd
+        fd_release(fd_idx);
+    }
 
     // uninstall from task
     task_uninstall(task_fd_idx);
@@ -245,7 +288,14 @@ int32_t sys_unlink(const char* path)
 
 int32_t sys_read(uint32_t task_fd_idx, uint8_t* buf, uint32_t cnt)
 {
-    int32_t ret_cnt = -1;
+    struct task_struct* task = kthread_current();
+    uint32_t fd_idx = task->open_fd[task_fd_idx];
+    struct inode_sys* inode = fd_table[fd_idx].inode;
+
+    // check pipe
+    if (fd_table[fd_idx].flag & O_PIPE) {
+        return pipe_read(fd_idx, buf, cnt);
+    }
 
     // stdin
     if (stdin_no == task_fd_idx) {
@@ -254,10 +304,6 @@ int32_t sys_read(uint32_t task_fd_idx, uint8_t* buf, uint32_t cnt)
     }
 
     // file read
-    struct task_struct* task = kthread_current();
-    uint32_t fd_idx = task->open_fd[task_fd_idx];
-    struct inode_sys* inode = fd_table[fd_idx].inode;
-
     inode_read(inode, fd_table[fd_idx].pos, buf, cnt);
     fd_table[fd_idx].pos += cnt;
 
@@ -266,6 +312,15 @@ int32_t sys_read(uint32_t task_fd_idx, uint8_t* buf, uint32_t cnt)
 
 int32_t sys_write(uint32_t task_fd_idx, uint8_t* buf, uint32_t cnt)
 {
+    struct task_struct* task = kthread_current();
+    uint32_t fd_idx = task->open_fd[task_fd_idx];
+    struct inode_sys* inode = fd_table[fd_idx].inode;
+
+    // check pipe
+    if (fd_table[fd_idx].flag & O_PIPE) {
+        return pipe_write(fd_idx, buf, cnt);
+    }
+
     // stdout
     if (stdout_no == task_fd_idx) {
         printk("%s", buf);
@@ -273,10 +328,6 @@ int32_t sys_write(uint32_t task_fd_idx, uint8_t* buf, uint32_t cnt)
     }
 
     // file write
-    struct task_struct* task = kthread_current();
-    uint32_t fd_idx = task->open_fd[task_fd_idx];
-    struct inode_sys* inode = fd_table[fd_idx].inode;
-
     if (O_TRUNC & fd_table[fd_idx].flag) {
         inode_write(inode, 0, buf, cnt);
     } else if (O_APPEND & fd_table[fd_idx].flag) {
@@ -357,6 +408,34 @@ int32_t sys_stat(const char* path, struct fstat* buf)
     buf->size = inode->i_size;
     inode_close(inode);
     return 0;
+}
+
+int32_t sys_pipe(uint32_t fd[2])
+{
+    struct ioqueue* ioq = ioq_init(PIPE_IOQ_SIZE);
+
+    // acquire fd
+    int32_t fd_idx = fd_acquire((struct inode_sys*)ioq, O_PIPE);
+    if (-1 == fd_idx) {
+        return -1;
+    }
+
+    // Reuse pos as the pipe open count
+    fd_table[fd_idx].pos = 2;
+    fd[0] = task_install(fd_idx);
+    fd[1] = task_install(fd_idx);
+    return 0;
+}
+
+void sys_dup2(uint32_t oldfd, uint32_t newfd)
+{
+    struct task_struct* task = kthread_current();
+
+    if (newfd < 3) {
+        task->open_fd[oldfd] = newfd;
+    } else {
+        task->open_fd[oldfd] = task->open_fd[newfd];
+    }
 }
 
 void file_init()

@@ -14,6 +14,7 @@
 #define O_CREATE        (0x1 << 2)
 #define O_TRUNC         (0x1 << 3)
 #define O_APPEND        (0x1 << 4)
+#define O_PIPE          (0x1 << 7)
 
 enum file_types {
     FT_UNKNOWN,

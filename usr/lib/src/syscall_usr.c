@@ -81,7 +81,35 @@ void exit(int32_t exit_code)
 }
 
 // file.h
+int32_t open(const char* path, uint8_t flag)
+{
+    return _syscall2(SYS_OPEN, path, flag);
+}
+void close(uint32_t fd)
+{
+    _syscall1(SYS_CLOSE, fd);
+}
+int32_t unlink(const char* path)
+{
+    return _syscall1(SYS_UNLINK, path);
+}
+int32_t read(uint32_t fd, uint8_t* buf, uint32_t cnt)
+{
+    return _syscall3(SYS_READ, fd, buf, cnt);
+}
 int32_t write(uint32_t fd, uint8_t* buf, uint32_t cnt)
 {
     return _syscall3(SYS_WRITE, fd, buf, cnt);
+}
+int32_t lseek(int32_t fd, int32_t offset, uint32_t wh)
+{
+    return _syscall3(SYS_LSEEK, fd, offset, wh);
+}
+int32_t pipe(uint32_t fd[2])
+{
+    return _syscall1(SYS_PIPE, fd);
+}
+void dup2(uint32_t oldfd, uint32_t newfd)
+{
+    _syscall2(SYS_DUP2, oldfd, newfd);
 }
