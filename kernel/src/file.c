@@ -10,6 +10,7 @@
 #include "stdio.h"
 #include "ioqueue.h"
 #include "fcntl.h"
+#include "keyboard.h"
 
 //=========================
 // debugging
@@ -299,7 +300,12 @@ int32_t sys_read(uint32_t task_fd_idx, uint8_t* buf, uint32_t cnt)
 
     // stdin
     if (stdin_no == task_fd_idx) {
-        // TODO: keyboard
+        // keyboard input
+        uint32_t idx;
+        for (idx = 0; idx < cnt; idx++)
+        {
+            *buf++ = ioq_get(kb_buf);
+        }
         return cnt;
     }
 

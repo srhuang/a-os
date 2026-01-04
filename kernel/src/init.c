@@ -9,6 +9,7 @@
 #include "fs.h"
 #include "file.h"
 #include "process.h"
+#include "keyboard.h"
 
 void kernel_init()
 {
@@ -18,6 +19,7 @@ void kernel_init()
     timer_init();
     kthread_init();
     printk_init();
+    keyboard_init();
 
     // enable interrupt
     intr_set_status(true);

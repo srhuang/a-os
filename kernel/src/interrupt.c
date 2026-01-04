@@ -147,7 +147,7 @@ static void pic_init(void)
     outb (PIC_S_DATA, 0x01);    // ICW4: 8086 mode, normal EOI
 
     // interrupt mask
-    outb (PIC_M_DATA, 0xFA);    // master PIC
+    outb (PIC_M_DATA, 0xF8);    // master PIC
     outb (PIC_S_DATA, 0x33);    // slave PIC
 }
 

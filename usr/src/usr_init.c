@@ -40,6 +40,16 @@ void init(void)
         read(pipefd[0], buf, sizeof(buf));
         printf("my father said to me:%s\n", buf);
 
+        while (read(0, buf, 1))
+        {
+            if (*buf == '\r') {
+                printf("\n");
+                break;
+            } else {
+                printf("%c", *buf);
+            }
+        }
+
         char* argv[16] = {NULL};
         exec("/sdb_1/bin/prog", argv);
     }
