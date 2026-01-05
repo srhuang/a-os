@@ -7,14 +7,6 @@
 //=========================
 // define
 //=========================
-static inline uint32_t xchg(volatile uint32_t *ptr, int x)
-{
-    asm volatile("xchg %0,%1"
-                : "=r" (x), "=m" (*ptr)
-                : "0" (x), "m" (*ptr)
-                : "memory");
-    return x;
-}
 
 //=========================
 // struct
