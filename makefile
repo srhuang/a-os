@@ -139,6 +139,9 @@ usr_lib_obj	+= $(BUILD_DIR)/printf.o
 #		User Object Files			#
 #####################################
 usr_obj		+= $(BUILD_DIR)/usr_init.o
+usr_obj		+= $(BUILD_DIR)/shell.o
+usr_obj		+= $(BUILD_DIR)/buildin_cmd.o
+usr_obj		+= $(BUILD_DIR)/path.o
 usr_obj		+= $(usr_lib_obj)
 usr_obj		+= $(lib_obj)
 

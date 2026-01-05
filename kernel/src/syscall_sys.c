@@ -29,6 +29,11 @@ void* syscall_func[SYSCALL_MAX];
 void syscall_init(void)
 {
     TRACE_STR("syscall_init()\n");
+#include "print.h"
+    syscall_func[SYS_CLEAR]     = cls_screen;
+#include "memory.h"
+    syscall_func[SYS_MALLOC]    = sys_malloc;
+    syscall_func[SYS_FREE]      = sys_free;
 #include "thread.h"
     syscall_func[SYS_PS]        = sys_ps;
     syscall_func[SYS_GETPID]    = sys_getpid;
@@ -44,7 +49,17 @@ void syscall_init(void)
     syscall_func[SYS_READ]      = sys_read;
     syscall_func[SYS_WRITE]     = sys_write;
     syscall_func[SYS_LSEEK]     = sys_lseek;
+    syscall_func[SYS_STAT]      = sys_stat;
     syscall_func[SYS_PIPE]      = sys_pipe;
     syscall_func[SYS_DUP2]      = sys_dup2;
+#include "dir.h"
+    syscall_func[SYS_OPENDIR]   = sys_opendir;
+    syscall_func[SYS_CLOSEDIR]  = sys_closedir;
+    syscall_func[SYS_REWINDDIR] = sys_rewinddir;
+    syscall_func[SYS_READDIR]   = sys_readdir;
+    syscall_func[SYS_MKDIR]     = sys_mkdir;
+    syscall_func[SYS_RMDIR]     = sys_rmdir;
+    syscall_func[SYS_GETCWD]    = sys_getcwd;
+    syscall_func[SYS_CHDIR]     = sys_chdir;
 }
 

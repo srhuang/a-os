@@ -52,6 +52,22 @@
 //=========================
 // external functions
 //=========================
+// print.h
+void clear(void)
+{
+    _syscall0(SYS_CLEAR);
+}
+
+// memory.h
+void* malloc(uint32_t size)
+{
+    return (void*)_syscall1(SYS_MALLOC, size);
+}
+void free(void* vaddr)
+{
+    _syscall1(SYS_FREE, vaddr);
+}
+
 // thread.h
 void ps(void)
 {
@@ -105,6 +121,10 @@ int32_t lseek(int32_t fd, int32_t offset, uint32_t wh)
 {
     return _syscall3(SYS_LSEEK, fd, offset, wh);
 }
+int32_t stat(const char* path, struct fstat* buf)
+{
+    return _syscall2(SYS_STAT, path, buf);
+}
 int32_t pipe(uint32_t fd[2])
 {
     return _syscall1(SYS_PIPE, fd);
@@ -113,3 +133,38 @@ void dup2(uint32_t oldfd, uint32_t newfd)
 {
     _syscall2(SYS_DUP2, oldfd, newfd);
 }
+
+// dir.h
+struct dirstream* opendir(const char* path)
+{
+    return (struct dirstream*)_syscall1(SYS_OPENDIR, path);
+}
+void closedir(struct dirstream* dir)
+{
+    _syscall1(SYS_CLOSEDIR, dir);
+}
+void rewinddir(struct dirstream* dir)
+{
+    _syscall1(SYS_REWINDDIR, dir);
+}
+struct dirent* readdir(struct dirstream* dir)
+{
+    return (struct dirent*)_syscall1(SYS_READDIR, dir);
+}
+int32_t mkdir(const char* path)
+{
+    return _syscall1(SYS_MKDIR, path);
+}
+int32_t rmdir(const char* path)
+{
+    return _syscall1(SYS_RMDIR, path);
+}
+int32_t getcwd(char* buf, uint32_t size)
+{
+    return _syscall2(SYS_GETCWD, buf, size);
+}
+int32_t chdir(const char* path)
+{
+    return _syscall1(SYS_CHDIR, path);
+}
+
