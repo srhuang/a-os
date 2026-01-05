@@ -13,6 +13,12 @@
 
 typedef char* va_list;
 
+enum std_fd {
+    stdin_no,
+    stdout_no,
+    stderr_no
+};
+
 //=========================
 // function
 //=========================

@@ -32,5 +32,7 @@ void                sys_rewinddir(struct dirstream* dir);
 struct dirent*      sys_readdir(struct dirstream* dir);
 int32_t             sys_mkdir(const char* path);
 int32_t             sys_rmdir(const char* path);
+int32_t             sys_getcwd(char* buf, uint32_t size);
+int32_t             sys_chdir(const char* path);
 
 #endif

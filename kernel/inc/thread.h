@@ -47,6 +47,9 @@ struct task_struct
     // for the size less than page size
     struct mem_block_desc*  mblock;
 
+    // current working directory (CWD)
+    uint32_t                cwd_inode;
+
     // MUST be the last member
     uint32_t    stack_magic;
 };

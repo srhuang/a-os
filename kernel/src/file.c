@@ -7,6 +7,7 @@
 #include "inode.h"
 #include "thread.h"
 #include "lock.h"
+#include "stdio.h"
 
 //=========================
 // debugging
@@ -135,7 +136,10 @@ int32_t sys_open(const char* path, uint8_t flag)
 {
     // get parent inode and child name
     uint8_t child_name[FILE_NAME_MAX];
-    uint32_t i_parent = dir_parse_path(path, child_name);
+    int32_t i_parent = dir_parse_path(path, child_name);
+     if (-1 == i_parent) {
+        return -1;
+    }
 
     // search child name
     int32_t i_no = dir_search_name(i_parent, child_name, FT_FILE);
@@ -201,7 +205,10 @@ int32_t sys_unlink(const char* path)
 {
     // get parent inode and child name
     uint8_t child_name[FILE_NAME_MAX];
-    uint32_t i_parent = dir_parse_path(path, child_name);
+    int32_t i_parent = dir_parse_path(path, child_name);
+     if (-1 == i_parent) {
+        return -1;
+    }
 
     // search child name
     int32_t i_child = dir_search_name(i_parent, child_name, FT_FILE);
@@ -308,6 +315,48 @@ int32_t sys_lseek(int32_t task_fd_idx, int32_t offset, enum whence wh)
     }
 
     return fd_table[fd_idx].pos;
+}
+
+int32_t sys_stat(const char* path, struct fstat* buf)
+{
+    // root dir
+    if (!strcmp(path, "/") \
+        || !strcmp(path, "/.") \
+        || !strcmp(path, "/..")) {
+        buf->size = root_dir.inode->i_size;
+        buf->ftype = FT_DIR;
+        return 0;
+    }
+
+    // get parent inode and child name
+    uint8_t child_name[FILE_NAME_MAX];
+    int32_t i_parent = dir_parse_path(path, child_name);
+    pr_debug("i_parent=%d, child=%s\n", i_parent, child_name);
+    if (-1 == i_parent) {
+        return -1;
+    }
+
+    //* search child name
+    int32_t i_no = dir_search_name(i_parent, child_name, FT_DIR);
+    if (-1 == i_no) {
+        i_no = dir_search_name(i_parent, child_name, FT_FILE);
+        if (-1 == i_no) {
+            printk("%s:%s Not Found.\n", __func__, path);
+            return -1;
+        }
+        // file
+        buf->ftype = FT_FILE;
+    } else {
+        // directory
+        buf->ftype = FT_DIR;
+    }
+    pr_debug("i_no=%d\n", i_no);
+
+    // get inode size
+    struct inode_sys* inode = inode_open(i_no);
+    buf->size = inode->i_size;
+    inode_close(inode);
+    return 0;
 }
 
 void file_init()

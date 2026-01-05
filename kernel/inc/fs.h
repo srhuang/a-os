@@ -4,6 +4,7 @@
 #include "lock.h"
 #include "list.h"
 #include "ide.h"
+#include "fcntl.h"
 
 //=========================
 // define
@@ -13,15 +14,7 @@
 #define BLOCK_SIZE      (4096)
 #define DIR_PER_BLK     (BLOCK_SIZE / sizeof(struct dirent))
 #define FS_MAGIC        (0x19890604)
-#define FILE_NAME_MAX   (16)
-#define PATH_DEPTH_MAX  (16)
 #define ROOT_DIR_MAX    (10)
-
-enum file_types {
-    FT_UNKNOWN,
-    FT_FILE,
-    FT_DIR
-};
 
 //=========================
 // struct
@@ -41,23 +34,6 @@ struct inode_sys
 
     uint32_t            open_cnt;
     struct list_elem    inode_tag;
-};
-
-// entry of directory in hard disk
-struct dirent
-{
-    uint32_t            i_no;
-    char                filename[FILE_NAME_MAX];
-    enum file_types     f_type;
-};
-
-// for the operations of directory in system
-struct dirstream
-{
-    struct inode_sys*   inode;
-    uint32_t            path[PATH_DEPTH_MAX];
-    struct dirent       dir_entry;
-    uint32_t            pos;
 };
 
 //=========================

@@ -297,6 +297,12 @@ struct inode_sys* inode_open(uint32_t inode_no)
     struct list_elem* elem;
     struct inode_sys* ret_inode = NULL;
     struct inode_sys* inode;
+
+    // root dir
+    if (0 == inode_no) {
+        return root_dir.inode;
+    }
+
     // get partition
     struct ide_ptn* ptn = inode_get_ptn(inode_no);
     assert(NULL != ptn);
@@ -348,6 +354,11 @@ struct inode_sys* inode_open(uint32_t inode_no)
 
 void inode_close(struct inode_sys* inode)
 {
+    // root dir
+    if (inode == root_dir.inode) {
+        return;
+    }
+
     // get partition
     struct ide_ptn* ptn = inode_get_ptn(inode->i_no);
     assert(NULL != ptn);
@@ -477,6 +488,13 @@ int32_t inode_read( \
 {
     int32_t ret = -1;
 
+    // root dir
+    if (inode == root_dir.inode) {
+        uint8_t* buf = (uint8_t*)root_blk;
+        memcpy(dst, buf + pos, cnt);
+        return 0;
+    }
+
     // get partition
     struct ide_ptn* ptn = inode_get_ptn(inode->i_no);
     assert(NULL != ptn);
@@ -536,6 +554,13 @@ int32_t inode_write( \
     struct inode_sys* inode, uint32_t pos, uint8_t* src, uint32_t cnt)
 {
     int32_t ret = -1;
+
+    // root dir
+    if (inode == root_dir.inode) {
+        uint8_t* buf = (uint8_t*)root_blk;
+        memcpy(buf + pos, src, cnt);
+        return 0;
+    }
 
     // get partition
     struct ide_ptn* ptn = inode_get_ptn(inode->i_no);

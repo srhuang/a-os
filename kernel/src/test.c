@@ -1199,6 +1199,25 @@ void test_file()
     }
     printk("\n");
 
+    // test sys_stat()
+    printk("\ntest sys_stat()\n");
+    struct fstat stat;
+    int32_t ret = sys_stat("/sdb_5/bbb", &stat);
+    printk("ret=%d, type=%d, size=%d\n", ret, stat.ftype, stat.size);
+
+    // test sys_chdir()
+    printk("\ntest sys_chdir()\n");
+    sys_mkdir("/sdb_5/aaa/");
+    sys_chdir("/sdb_5/aaa");
+    printk("task cwd=%d\n", kthread_current()->cwd_inode);
+
+    // test sys_getcwd()
+    printk("\ntest sys_getcwd()\n");
+    sys_chdir("/sdb_5/aaa");
+    char cwd[32];
+    ret = sys_getcwd(cwd, sizeof(cwd));
+    printk("ret=%d, cwd:%s\n", ret, cwd);
+
     printk("%s ---\n", __func__);
 }
 
@@ -1271,7 +1290,7 @@ void test_all()
     test_dir();
     //*/
 
-    /* file.h
+    //* file.h
     test_file();
     //*/
 }

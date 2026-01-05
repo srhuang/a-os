@@ -6,7 +6,7 @@
 #include "list.h"
 #include "interrupt.h"
 #include "sched.h"
-#include "file.h"
+#include "stdio.h"
 
 //=========================
 // debugging
@@ -72,6 +72,9 @@ static void main_thread_init(void)
 
     // for the size less than page size
     g_main_task->mblock = k_mem_block;
+
+    // cwd
+    g_main_task->cwd_inode = 0;
 
     // start for scheduling
     g_main_task->status = TASK_RUNNING;
@@ -151,6 +154,9 @@ struct task_struct* kthread_create(threadfn fn, void* fn_arg, char* name)
 
     // for the size less than page size
     task->mblock = k_mem_block;
+
+    // cwd
+    task->cwd_inode = 0;
 
     return task;
 }

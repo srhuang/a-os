@@ -28,7 +28,7 @@
 //=========================
 // internal functions
 //=========================
-struct ide_ptn* dir_get_ptn(const char* name)
+static struct ide_ptn* dir_get_ptn(const char* name)
 {
     struct ide_ptn* ret_ptn = NULL;
 
@@ -55,7 +55,7 @@ struct ide_ptn* dir_get_ptn(const char* name)
     return ret_ptn;
 }
 
-int32_t dir_split_path(const char* path, \
+static int32_t dir_split_path(const char* path, \
     char name[PATH_DEPTH_MAX][FILE_NAME_MAX])
 {
     uint8_t* buf = (uint8_t*)kmalloc(strlen(path));
@@ -99,6 +99,71 @@ int32_t dir_split_path(const char* path, \
     return idx;
 }
 
+static int32_t dir_get_parent(uint32_t i_no)
+{
+    // root dir
+    if (0 == i_no) {
+        return 0;
+    }
+
+    // read '.' and '..'
+    uint32_t size = sizeof(struct dirent) * 2;
+    void* buf = kmalloc(size);
+    struct inode_sys* inode = inode_open(i_no);
+    inode_read(inode, 0, buf, size);
+    inode_close(inode);
+
+    // return i_parent
+    struct dirent* dir = (struct dirent*)buf;
+    uint32_t i_parent = (dir + 1)->i_no;
+    struct ide_ptn* ptn = inode_get_ptn(i_no);
+    if (i_no == ptn->inode_base) {
+        i_parent = 0;
+    } else {
+        i_parent += ptn->inode_base;
+    }
+
+    kfree(buf);
+    return i_parent;
+}
+
+static int32_t dir_get_name(uint32_t i_parent, uint32_t i_child, char* name)
+{
+    // root dir
+    if (0 == i_child) {
+        strcpy(name, "/");
+        pr_debug("%s:name='/'\n", __func__);
+        return 0;
+    }
+
+    // read all dir entry
+    struct inode_sys* inode = inode_open(i_parent);
+    pr_debug("%s:size=%d\n", __func__, inode->i_size);
+    uint8_t* buf = kmalloc(inode->i_size);
+    inode_read(inode, 0, buf, inode->i_size);
+    uint32_t cnt = (inode->i_size) / sizeof(struct dirent);
+    pr_debug("%s:cnt=%d\n", __func__, cnt);
+    inode_close(inode);
+
+    // parse the dir entry
+    struct dirent* dir = (struct dirent*)buf;
+    if (0 != i_parent) {
+        struct ide_ptn* ptn = inode_get_ptn(i_parent);
+        i_child -= ptn->inode_base;
+    }
+    uint32_t idx;
+    for (idx = 0; idx < cnt; idx++)
+    {
+        if ((dir + idx)->i_no == i_child) {
+            strcpy(name, (dir + idx)->filename);
+            pr_debug("%s:name=%s\n", __func__, (dir + idx)->filename);
+            return 0;
+        }
+    }
+
+    return -1;
+}
+
 //=========================
 // external functions
 //=========================
@@ -133,8 +198,10 @@ int dir_search_name(uint32_t inode_no, const char* name, enum file_types type)
         {
             ret_inode = (dir + dir_idx)->i_no;
             // transfer the inode number
-            struct ide_ptn* ptn = inode_get_ptn(inode_no);
-            ret_inode += ptn->inode_base;
+            if (0 != inode_no) {
+                struct ide_ptn* ptn = inode_get_ptn(inode_no);
+                ret_inode += ptn->inode_base;
+            }
             break;
         }
     } // for
@@ -194,25 +261,40 @@ int32_t dir_search_path(struct dirstream* dir, const char* path)
 
 int32_t dir_parse_path(const char* path, char* child_name)
 {
-    int32_t i_parent = -1;
-
-    // get parent inode and child name
-    struct dirstream dir;
+    // duplicate the path
     uint32_t size = strlen(path);
     uint8_t* buf = (uint8_t*)kmalloc(size);
     strcpy(buf, path);
     if (*(buf+size-1) == '/') {
         *(buf+size-1) = 0;
     }
+
+    // get child name
     uint8_t* p = strrchr(buf, '/');
-    *p = 0;
+    if (NULL == p) {
+        printk("%s:Not a path(%s)\n", __func__, path);
+        return -1;
+    }
     strcpy(child_name, p + 1);
+    if (p == buf) {
+        *(p + 1) = 0;
+    } else {
+        *p = 0;
+    }
+
+    // get parent inode
+    int32_t i_parent = -1;
+    struct dirstream dir;
     int32_t cnt = dir_search_path(&dir, buf);
+    kfree(buf);
     if (-1 == cnt) {
         return -1;
     }
-    i_parent = dir.path[cnt-1];
-    kfree(buf);
+    if (0 == cnt) {
+        i_parent = root_dir.inode->i_no;
+    } else {
+        i_parent = dir.path[cnt-1];
+    }
 
     return i_parent;
 }
@@ -334,7 +416,14 @@ int32_t sys_mkdir(const char* path)
 {
     // get parent inode and child name
     uint8_t child_name[FILE_NAME_MAX];
-    uint32_t i_parent = dir_parse_path(path, child_name);
+    int32_t i_parent = dir_parse_path(path, child_name);
+    if (-1 == i_parent) {
+        return -1;
+    }
+    if (0 == i_parent) {
+        printk("Can not create partition.\n");
+        return -1;
+    }
 
     // new inode table
     struct ide_ptn* ptn = inode_get_ptn(i_parent);
@@ -382,6 +471,14 @@ int32_t sys_rmdir(const char* path)
     if (-1 == cnt) {
         return -1;
     }
+    if (0 == cnt) {
+        printk("Can not remove root dir.\n");
+        return -1;
+    }
+    if (1 == cnt) {
+        printk("Can not remove partition.\n");
+        return -1;
+    }
     i_child = dir.path[cnt - 1];
     i_parent = dir.path[cnt - 2];
     pr_debug("%s:i_child=%d\n", __func__, i_child);
@@ -399,6 +496,69 @@ int32_t sys_rmdir(const char* path)
 
     // uninstall from parent
     dir_uninstall(i_parent, i_child);
+
+    return 0;
+}
+
+int32_t sys_getcwd(char* buf, uint32_t size)
+{
+    struct task_struct* task = kthread_current();
+    uint32_t i_child = task->cwd_inode;
+    int32_t i_parent;
+    int32_t ret;
+
+    // get the path
+    char path[PATH_DEPTH_MAX][FILE_NAME_MAX];
+    int32_t idx = 0;
+    while (i_child)
+    {
+        i_parent = dir_get_parent(i_child);
+        pr_debug("%s:i_parent=%d\n", __func__, i_parent);
+        ret = dir_get_name(i_parent, i_child, path[idx++]);
+        if (-1 == ret) {
+            return -1;
+        }
+        i_child = i_parent;
+    }
+    pr_debug("%s:idx=%d\n", __func__, idx);
+
+    // construct the path
+    char* p = buf;
+    *p++ = '/';
+    idx--;
+    for (; idx>=0; idx--)
+    {
+        pr_debug("%s:%s\n", __func__, path[idx]);
+        if (((p + strlen(path[idx])) - buf + 1) >= size) {
+            *p = 0;
+            return -1;
+        }
+        strcpy(p, path[idx]);
+        p += strlen(path[idx]);
+        *p++ = '/';
+    }
+    *p = 0;
+
+    return 0;
+}
+
+int32_t sys_chdir(const char* path)
+{
+    struct dirstream* dir = \
+        (struct dirstream*)kmalloc(sizeof(struct dirstream));
+    uint32_t i_no;
+
+    int32_t cnt = dir_search_path(dir, path);
+    if (-1 == cnt) {
+        kfree(dir);
+        return -1;
+    }
+
+    // assign cwd
+    struct task_struct* task = kthread_current();
+    task->cwd_inode = dir->path[cnt-1];
+
+    kfree(dir);
 
     return 0;
 }
