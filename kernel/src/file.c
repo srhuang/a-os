@@ -398,7 +398,7 @@ int32_t sys_stat(const char* path, struct fstat* buf)
     if (-1 == i_no) {
         i_no = dir_search_name(i_parent, child_name, FT_FILE);
         if (-1 == i_no) {
-            printk("%s:%s Not Found.\n", __func__, path);
+            //printk("%s:%s Not Found.\n", __func__, path);
             return -1;
         }
         // file
