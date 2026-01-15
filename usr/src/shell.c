@@ -288,6 +288,7 @@ void myshell()
         for (idx = 0; idx < argc; idx++)
         {
             free(argv[idx]);
+            argv[idx] = NULL;
         }
     }
 }

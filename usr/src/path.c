@@ -51,10 +51,6 @@ int32_t path_abs(char* path, char abs[PATH_LEN_MAX])
         pr_debug("%s:getcwd=%s\n", __func__, tmp);
     }
     strcat(tmp, path);
-    uint32_t tmp_len = strlen(tmp);
-    if (tmp[tmp_len - 1] != '/') {
-        strcat(tmp, "/");
-    }
     pr_debug("%s:tmp=%s\n", __func__, tmp);
 
     // deal with '.' and '..'
